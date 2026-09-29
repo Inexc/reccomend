@@ -242,3 +242,4 @@ namespace MovieBookRecommender.Views
             _data.IsFavorite(item.Id) ? "♥  В избранном" : "♡  Добавить в избранное";
     }
 }
+

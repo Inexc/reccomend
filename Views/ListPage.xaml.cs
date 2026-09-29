@@ -32,8 +32,10 @@ namespace MovieBookRecommender.Views
                 ? "Подборка фильмов по вашему вкусу"
                 : "Истории, в которые стоит погрузиться";
 
+            SearchPlaceholder.Text = icon == "🎞" ? "Поиск фильмов..." : "Поиск книг...";
+
             _suppressFilterEvents = true;
-            var genres = new List<string> { "Все" };
+            var genres = new List<string> { "Все жанры" };
             genres.AddRange(_data.GenresFor(_itemsGetter()));
             GenreCombo.ItemsSource = genres;
             GenreCombo.SelectedIndex = 0;
@@ -42,6 +44,7 @@ namespace MovieBookRecommender.Views
             SortCombo.SelectedIndex = 0;
             _suppressFilterEvents = false;
 
+            UpdateResetButtonVisibility();
             Refresh();
         }
 
@@ -50,6 +53,7 @@ namespace MovieBookRecommender.Views
             _suppressFilterEvents = true;
             SearchBox.Text = query;
             GenreCombo.SelectedIndex = 0;
+            UpdateResetButtonVisibility();
             _suppressFilterEvents = false;
             Refresh();
         }
@@ -62,14 +66,62 @@ namespace MovieBookRecommender.Views
             var items = GenreCombo.ItemsSource as List<string>;
             var index = items?.IndexOf(genre) ?? -1;
             GenreCombo.SelectedIndex = index >= 0 ? index : 0;
+            UpdateResetButtonVisibility();
             _suppressFilterEvents = false;
             Refresh();
         }
 
         private void Filter_Changed(object sender, RoutedEventArgs e)
         {
+            UpdateResetButtonVisibility();
             if (!_suppressFilterEvents)
                 Refresh();
+        }
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var hasText = !string.IsNullOrEmpty(SearchBox.Text);
+            SearchPlaceholder.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
+            ClearSearchBtn.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+            UpdateResetButtonVisibility();
+            if (!_suppressFilterEvents)
+                Refresh();
+        }
+
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            SearchBoxContainer.BorderBrush = (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"];
+        }
+
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            SearchBoxContainer.BorderBrush = (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
+        }
+
+        private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SearchBox.Text = "";
+            SearchBox.Focus();
+        }
+
+        private void ResetFiltersBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _suppressFilterEvents = true;
+            SearchBox.Text = "";
+            GenreCombo.SelectedIndex = 0;
+            SortCombo.SelectedIndex = 0;
+            UpdateResetButtonVisibility();
+            _suppressFilterEvents = false;
+            Refresh();
+        }
+
+        private void UpdateResetButtonVisibility()
+        {
+            bool isModified = !string.IsNullOrWhiteSpace(SearchBox?.Text) ||
+                              (GenreCombo != null && GenreCombo.SelectedIndex > 0) ||
+                              (SortCombo != null && SortCombo.SelectedIndex > 0);
+            if (ResetFiltersBtn != null)
+                ResetFiltersBtn.Visibility = isModified ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // ------------------------------------------------------------------
@@ -108,16 +160,19 @@ namespace MovieBookRecommender.Views
                 items = _data.Search(query, items);
 
             var genre = GenreCombo.SelectedItem as string;
-            if (!string.IsNullOrEmpty(genre) && genre != "Все")
+            if (!string.IsNullOrEmpty(genre) && genre != "Все жанры")
                 items = items.Where(i => i.Genre.Contains(genre)).ToList();
 
             var sort = SortCombo.SelectedItem as string;
             items = sort switch
             {
-                "По названию" => items.OrderBy(i => i.Title).ToList(),
+                "По названию" => items.OrderBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase).ToList(),
                 "Сначала новые" => items.OrderByDescending(i => i.Year).ThenByDescending(i => i.Rating).ToList(),
-                _ => items.OrderByDescending(i => i.Rating).ToList()
+                _ => items.OrderByDescending(i => i.Rating).ThenBy(i => i.Title).ToList()
             };
+
+            ResultsCountText.Text = $"Найдено: {items.Count}";
+            UpdateResetButtonVisibility();
 
             CardsPanel.Children.Clear();
             if (items.Count == 0)

@@ -100,7 +100,7 @@ namespace MovieBookRecommender.Services
             var q = query.Trim().ToLowerInvariant();
             return source.Where(item =>
             {
-                var haystack = $"{item.Title} {item.Author} {item.GenreText}".ToLowerInvariant();
+                var haystack = $"{item.Title} {item.Author} {item.GenreText} {item.Year}".ToLowerInvariant();
                 return haystack.Contains(q);
             }).ToList();
         }

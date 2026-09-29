@@ -65,13 +65,21 @@ namespace MovieBookRecommender.Views
 
         private void UpdateFilterButtons()
         {
-            var allStyle = _currentFilter == "all" ? (Style)Application.Current.Resources["GenreChip"] : (Style)Application.Current.Resources["GenreChip"];
-            var moviesStyle = _currentFilter == "movies" ? (Style)Application.Current.Resources["GenreChip"] : (Style)Application.Current.Resources["GenreChip"];
-            var booksStyle = _currentFilter == "books" ? (Style)Application.Current.Resources["GenreChip"] : (Style)Application.Current.Resources["GenreChip"];
+            var accent = (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"];
+            var border2 = (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
+            var textBrush = (System.Windows.Media.Brush)Application.Current.Resources["TextBrush"];
 
-            FilterAllBtn.BorderBrush = _currentFilter == "all" ? (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"] : (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
-            FilterMoviesBtn.BorderBrush = _currentFilter == "movies" ? (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"] : (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
-            FilterBooksBtn.BorderBrush = _currentFilter == "books" ? (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"] : (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
+            SetChipState(FilterAllBtn, _currentFilter == "all", accent, border2, textBrush);
+            SetChipState(FilterMoviesBtn, _currentFilter == "movies", accent, border2, textBrush);
+            SetChipState(FilterBooksBtn, _currentFilter == "books", accent, border2, textBrush);
+        }
+
+        private static void SetChipState(Button btn, bool isActive, System.Windows.Media.Brush accent, System.Windows.Media.Brush normalBorder, System.Windows.Media.Brush textNormal)
+        {
+            btn.BorderBrush = isActive ? accent : normalBorder;
+            btn.BorderThickness = new Thickness(isActive ? 1.5 : 1);
+            btn.Foreground = isActive ? accent : textNormal;
+            btn.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
         public void Refresh()
@@ -136,6 +144,12 @@ namespace MovieBookRecommender.Views
             MoviesCountText.Text = movieCount.ToString();
             BooksCountText.Text = bookCount.ToString();
             TotalCountText.Text = totalCount.ToString();
+
+            FilterAllBtn.Content = $"Все — {totalCount}";
+            FilterMoviesBtn.Content = $"Фильмы — {movieCount}";
+            FilterBooksBtn.Content = $"Книги — {bookCount}";
+
+            UpdateFilterButtons();
         }
     }
 }

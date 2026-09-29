@@ -5,52 +5,116 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="48,32,48,40">
 
-            <!-- Поиск -->
-            <Border Background="{StaticResource CardBrush}" CornerRadius="12" Width="420"
-                    HorizontalAlignment="Left" Margin="0,0,0,28">
-                <Grid Margin="16,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="⌕" FontSize="14" Foreground="{StaticResource TextFaintBrush}"
-                               VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource SearchBox}"
-                             TextChanged="SearchBox_TextChanged" Padding="0,12" FontSize="13"
-                             Tag="Поиск фильмов, книг, авторов, жанров…"/>
-                    <Button x:Name="ClearSearchBtn" Grid.Column="2" Content="✕"
-                            Style="{StaticResource GhostButton}" Padding="8,4" FontSize="11"
-                            VerticalAlignment="Center" Margin="6,0,0,0"
-                            Visibility="Collapsed" Click="ClearSearchBtn_Click"/>
-                </Grid>
-            </Border>
-
-            <!-- Результаты поиска (появляются при вводе) -->
-            <StackPanel x:Name="SearchResultsPanel" Visibility="Collapsed" Margin="0,0,0,32">
-                <Grid Margin="0,0,0,16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock x:Name="SearchResultsTitle" Text="Результаты поиска" Style="{StaticResource H2}"/>
-                        <TextBlock x:Name="SearchResultsSubtitle" Text="Найдено произведений: 0" Style="{StaticResource SmallText}" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="Очистить поиск" Style="{StaticResource GhostButton}"
-                            Click="ClearSearchBtn_Click" VerticalAlignment="Center"/>
-                </Grid>
-
-                <WrapPanel x:Name="SearchResultsCards" Orientation="Horizontal"/>
-
-                <Border x:Name="SearchEmptyState" Visibility="Collapsed" Margin="0,40,0,40">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🔍" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,14" Opacity="0.5"/>
-                        <TextBlock Text="Ничего не найдено" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                        <TextBlock Text="Попробуйте изменить поисковый запрос" Style="{StaticResource SmallText}" HorizontalAlignment="Center" Opacity="0.7"/>
-                    </StackPanel>
+            <!-- Контейнер строки поиска с выпадающим блоком результатов -->
+            <Grid HorizontalAlignment="Left" Margin="0,0,0,28" Width="460">
+                <Border x:Name="SearchBoxContainer"
+                        Background="{StaticResource CardBrush}"
+                        BorderBrush="{StaticResource BorderBrush2}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Height="42">
+                    <Grid Margin="12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="🔍" FontSize="12" Foreground="{StaticResource TextFaintBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock x:Name="SearchPlaceholder"
+                                       Text="Поиск фильмов и книг..."
+                                       Foreground="{StaticResource TextFaintBrush}"
+                                       FontSize="13"
+                                       IsHitTestVisible="False"
+                                       VerticalAlignment="Center"/>
+                            <TextBox x:Name="SearchBox"
+                                     Style="{StaticResource SearchBox}"
+                                     FontSize="13"
+                                     Padding="0"
+                                     VerticalAlignment="Center"
+                                     TextChanged="SearchBox_TextChanged"
+                                     GotFocus="SearchBox_GotFocus"
+                                     LostFocus="SearchBox_LostFocus"
+                                     KeyDown="SearchBox_KeyDown"/>
+                        </Grid>
+                        <Button x:Name="ClearSearchBtn" Grid.Column="2" Content="✕"
+                                Style="{StaticResource GhostButton}" Padding="7,3" FontSize="11"
+                                VerticalAlignment="Center" Margin="6,0,0,0"
+                                Visibility="Collapsed" Click="ClearSearchBtn_Click"/>
+                    </Grid>
                 </Border>
-            </StackPanel>
+
+                <!-- Выпадающий блок быстрых результатов поиска -->
+                <Popup x:Name="SearchPopup"
+                       PlacementTarget="{Binding ElementName=SearchBoxContainer}"
+                       Placement="Bottom"
+                       VerticalOffset="6"
+                       AllowsTransparency="True"
+                       PopupAnimation="Fade"
+                       StaysOpen="True"
+                       IsOpen="False">
+                    <Border Width="460"
+                            Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource BorderBrush2}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="16,14">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.55" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel x:Name="DropdownContent">
+                            <!-- Заголовок Поиск -->
+                            <Grid Margin="0,0,0,10">
+                                <TextBlock Text="ПОИСК" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Accent2Brush}"/>
+                                <TextBlock x:Name="DropdownCountText" Text="Найдено: 0" Style="{StaticResource SmallText}"
+                                           Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Пустой результат -->
+                            <StackPanel x:Name="DropdownEmptyState" Visibility="Collapsed" Margin="0,16,0,16" HorizontalAlignment="Center">
+                                <TextBlock Text="🔍" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,8" Opacity="0.5"/>
+                                <TextBlock Text="Ничего не найдено" Style="{StaticResource H3}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock Text="Попробуйте изменить запрос или использовать другое название."
+                                           Style="{StaticResource SmallText}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="360" Opacity="0.7"/>
+                            </StackPanel>
+
+                            <!-- Раздел Фильмы -->
+                            <StackPanel x:Name="DropdownMoviesSection" Margin="0,0,0,10">
+                                <TextBlock Text="ФИЛЬМЫ" Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}"
+                                           FontFamily="Segoe UI Semibold" Margin="0,0,0,6"/>
+                                <StackPanel x:Name="DropdownMoviesList"/>
+                            </StackPanel>
+
+                            <!-- Разделитель между фильмами и книгами -->
+                            <Border x:Name="DropdownSeparator" Height="1" Background="{StaticResource BorderBrush2}" Margin="0,2,0,10"/>
+
+                            <!-- Раздел Книги -->
+                            <StackPanel x:Name="DropdownBooksSection" Margin="0,0,0,10">
+                                <TextBlock Text="КНИГИ" Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}"
+                                           FontFamily="Segoe UI Semibold" Margin="0,0,0,6"/>
+                                <StackPanel x:Name="DropdownBooksList"/>
+                            </StackPanel>
+
+                            <!-- Внизу: кнопки «Показать все результаты» -->
+                            <Border x:Name="DropdownFooter" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="ShowAllMoviesBtn" Grid.Column="0" Content="Все фильмы →"
+                                            Style="{StaticResource GhostButton}" Padding="10,6" FontSize="11" Margin="0,0,6,0"
+                                            Click="ShowAllMoviesBtn_Click"/>
+                                    <Button x:Name="ShowAllBooksBtn" Grid.Column="1" Content="Все книги →"
+                                            Style="{StaticResource GhostButton}" Padding="10,6" FontSize="11" Margin="6,0,0,0"
+                                            Click="ShowAllBooksBtn_Click"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+            </Grid>
 
             <!-- Основной контент (Hero, Избранное, Жанры, Рекомендации, Новинки) -->
             <StackPanel x:Name="DefaultContentPanel">
@@ -163,3 +227,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+

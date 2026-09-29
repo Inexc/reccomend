@@ -13,3 +13,4 @@ namespace MovieBookRecommender.Models
         public bool IsMaximized { get; set; } = false;
     }
 }
+

@@ -256,12 +256,68 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Поиск (Живой поиск по фильмам и книгам одновременно)
+        // Поиск (Выпадающий блок результатов на Главной странице)
         // ------------------------------------------------------------------
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            var hasText = !string.IsNullOrWhiteSpace(SearchBox.Text);
+            SearchPlaceholder.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
+            ClearSearchBtn.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!hasText)
+            {
+                _searchDebounceTimer.Stop();
+                SearchPopup.IsOpen = false;
+                return;
+            }
+
             _searchDebounceTimer.Stop();
             _searchDebounceTimer.Start();
+        }
+
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+            if (!string.IsNullOrWhiteSpace(SearchBox.Text))
+            {
+                PerformSearch(SearchBox.Text.Trim());
+                SearchPopup.IsOpen = true;
+            }
+        }
+
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["BorderBrush2"];
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (!SearchBox.IsKeyboardFocusWithin)
+                    SearchPopup.IsOpen = false;
+            };
+            timer.Start();
+        }
+
+        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                SearchPopup.IsOpen = false;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                var query = SearchBox.Text?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(query))
+                {
+                    SearchPopup.IsOpen = false;
+                    var moviesCount = _data.Search(query, _data.Movies).Count;
+                    var booksCount = _data.Search(query, _data.Books).Count;
+                    if (booksCount > moviesCount)
+                        _app.ShowPage("books", searchQuery: query);
+                    else
+                        _app.ShowPage("movies", searchQuery: query);
+                }
+            }
         }
 
         private void SearchDebounceTimer_Tick(object? sender, EventArgs e)
@@ -275,56 +331,172 @@ namespace MovieBookRecommender.Views
         {
             if (string.IsNullOrWhiteSpace(query))
             {
-                ClearSearchBtn.Visibility = Visibility.Collapsed;
-                SearchResultsPanel.Visibility = Visibility.Collapsed;
-                DefaultContentPanel.Visibility = Visibility.Visible;
+                SearchPopup.IsOpen = false;
                 return;
             }
 
-            ClearSearchBtn.Visibility = Visibility.Visible;
-            DefaultContentPanel.Visibility = Visibility.Collapsed;
-            SearchResultsPanel.Visibility = Visibility.Visible;
+            var movies = _data.Search(query, _data.Movies);
+            var books = _data.Search(query, _data.Books);
+            var total = movies.Count + books.Count;
 
-            var results = _data.Search(query, _data.AllItems());
-            SearchResultsCards.Children.Clear();
+            DropdownMoviesList.Children.Clear();
+            DropdownBooksList.Children.Clear();
 
-            if (results.Count == 0)
+            DropdownCountText.Text = $"Найдено: {total}";
+
+            if (total == 0)
             {
-                SearchResultsSubtitle.Text = $"По запросу «{query}» ничего не найдено";
-                SearchEmptyState.Visibility = Visibility.Visible;
-                _app.ShowToast("Ничего не найдено", "🔍");
+                DropdownEmptyState.Visibility = Visibility.Visible;
+                DropdownMoviesSection.Visibility = Visibility.Collapsed;
+                DropdownSeparator.Visibility = Visibility.Collapsed;
+                DropdownBooksSection.Visibility = Visibility.Collapsed;
+                DropdownFooter.Visibility = Visibility.Collapsed;
+                SearchPopup.IsOpen = true;
+                return;
+            }
+
+            DropdownEmptyState.Visibility = Visibility.Collapsed;
+
+            // Фильмы (топ-3)
+            if (movies.Count > 0)
+            {
+                DropdownMoviesSection.Visibility = Visibility.Visible;
+                foreach (var movie in movies.Take(3))
+                {
+                    DropdownMoviesList.Children.Add(CreateDropdownItem(movie));
+                }
             }
             else
             {
-                SearchEmptyState.Visibility = Visibility.Collapsed;
-                SearchResultsSubtitle.Text = $"Найдено произведений: {results.Count} (фильмы и книги)";
-
-                foreach (var item in results)
-                {
-                    var card = new CardControl { Margin = new Thickness(0, 0, 16, 16) };
-                    card.Initialize(item, _data);
-                    card.OpenRequested += it =>
-                    {
-                        SetHero(it);
-                        _app.OpenItem(it);
-                    };
-                    card.FavoriteChanged += _ => _app.OnFavoriteChanged(item);
-                    SearchResultsCards.Children.Add(card);
-                }
-
-                // Плавное появление результатов (200ms)
-                var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200))
-                {
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                };
-                SearchResultsCards.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                DropdownMoviesSection.Visibility = Visibility.Collapsed;
             }
+
+            // Книги (топ-3)
+            if (books.Count > 0)
+            {
+                DropdownBooksSection.Visibility = Visibility.Visible;
+                foreach (var book in books.Take(3))
+                {
+                    DropdownBooksList.Children.Add(CreateDropdownItem(book));
+                }
+            }
+            else
+            {
+                DropdownBooksSection.Visibility = Visibility.Collapsed;
+            }
+
+            DropdownSeparator.Visibility = (movies.Count > 0 && books.Count > 0)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            // Подвал
+            DropdownFooter.Visibility = Visibility.Visible;
+            ShowAllMoviesBtn.Content = $"Все фильмы ({movies.Count}) →";
+            ShowAllMoviesBtn.Visibility = movies.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ShowAllBooksBtn.Content = $"Все книги ({books.Count}) →";
+            ShowAllBooksBtn.Visibility = books.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            SearchPopup.IsOpen = true;
+        }
+
+        private FrameworkElement CreateDropdownItem(MediaItem item)
+        {
+            var border = new Border
+            {
+                Background = Brushes.Transparent,
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(8, 6, 8, 6),
+                Margin = new Thickness(0, 1, 0, 1),
+                Cursor = Cursors.Hand
+            };
+
+            border.MouseEnter += (_, _) => border.Background = (Brush)Application.Current.Resources["CardHoverBrush"];
+            border.MouseLeave += (_, _) => border.Background = Brushes.Transparent;
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var posterBorder = new Border
+            {
+                Width = 28,
+                Height = 40,
+                CornerRadius = new CornerRadius(4),
+                ClipToBounds = true,
+                Margin = new Thickness(0, 0, 10, 0),
+                Background = (Brush)Application.Current.Resources["BgBrush"]
+            };
+            posterBorder.Child = new Image
+            {
+                Source = PosterService.GetImage(item),
+                Stretch = Stretch.UniformToFill
+            };
+            Grid.SetColumn(posterBorder, 0);
+            grid.Children.Add(posterBorder);
+
+            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var title = new TextBlock
+            {
+                Text = item.Title,
+                FontFamily = new FontFamily("Segoe UI Semibold"),
+                FontSize = 13,
+                Foreground = (Brush)Application.Current.Resources["TextBrush"],
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            textPanel.Children.Add(title);
+
+            var subtitle = new TextBlock
+            {
+                Style = (Style)Application.Current.Resources["SmallText"],
+                Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            if (item.Kind == MediaKind.Movie)
+            {
+                subtitle.Text = $"★ {item.Rating:F1}" + (item.Year > 0 ? $"  •  {item.Year} г." : "");
+            }
+            else
+            {
+                subtitle.Text = (!string.IsNullOrWhiteSpace(item.Author) ? item.Author : item.GenreText) + $"  •  ★ {item.Rating:F1}";
+            }
+            textPanel.Children.Add(subtitle);
+
+            Grid.SetColumn(textPanel, 1);
+            grid.Children.Add(textPanel);
+
+            border.Child = grid;
+            border.MouseLeftButtonUp += (_, _) =>
+            {
+                SearchPopup.IsOpen = false;
+                SetHero(item);
+                _app.OpenItem(item);
+            };
+
+            return border;
+        }
+
+        private void ShowAllMoviesBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SearchPopup.IsOpen = false;
+            var query = SearchBox.Text?.Trim() ?? "";
+            _app.ShowPage("movies", searchQuery: query);
+        }
+
+        private void ShowAllBooksBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SearchPopup.IsOpen = false;
+            var query = SearchBox.Text?.Trim() ?? "";
+            _app.ShowPage("books", searchQuery: query);
         }
 
         private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
         {
             SearchBox.Text = "";
-            PerformSearch("");
+            SearchPlaceholder.Visibility = Visibility.Visible;
+            ClearSearchBtn.Visibility = Visibility.Collapsed;
+            SearchPopup.IsOpen = false;
+            SearchBox.Focus();
         }
     }
 }
+
