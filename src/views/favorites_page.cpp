@@ -5,6 +5,7 @@
 #include "../styles/theme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QStyle>
 
 FavoritesPage::FavoritesPage(DataManager* data, MainWindow* app, QWidget* parent)
     : QWidget(parent), m_data(data), m_app(app) {

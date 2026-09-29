@@ -8,6 +8,6 @@ class RecommendationService {
 public:
     static double score(const MediaItem& seed, const MediaItem& candidate);
     static QList<MediaItem> recommendSimilar(const MediaItem& seed, const QList<MediaItem>& pool, int limit = 3);
-    static const MediaItem* pickFeatured(const QList<MediaItem>& pool, const QSet<QString>& favoriteIds);
+    static MediaItem pickFeatured(const QList<MediaItem>& pool, const QSet<QString>& favoriteIds);
 };
 

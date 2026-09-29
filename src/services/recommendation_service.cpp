@@ -55,9 +55,9 @@ QList<MediaItem> RecommendationService::recommendSimilar(const MediaItem& seed, 
     return result;
 }
 
-const MediaItem* RecommendationService::pickFeatured(const QList<MediaItem>& pool, const QSet<QString>& favoriteIds) {
+MediaItem RecommendationService::pickFeatured(const QList<MediaItem>& pool, const QSet<QString>& favoriteIds) {
     if (pool.isEmpty()) {
-        return nullptr;
+        return MediaItem{};
     }
 
     // Check if there are favorite items in pool
@@ -76,8 +76,9 @@ const MediaItem* RecommendationService::pickFeatured(const QList<MediaItem>& poo
             }
         }
 
-        const MediaItem* best = nullptr;
+        MediaItem best;
         double bestScore = -1.0;
+        bool found = false;
 
         for (const auto& item : pool) {
             if (favoriteIds.contains(item.id)) continue;
@@ -90,20 +91,21 @@ const MediaItem* RecommendationService::pickFeatured(const QList<MediaItem>& poo
             double score = overlap * 10.0 + item.rating;
             if (score > bestScore) {
                 bestScore = score;
-                best = &item;
+                best = item;
+                found = true;
             }
         }
 
-        if (best != nullptr) {
+        if (found) {
             return best;
         }
     }
 
     // Fallback: pick highest rating
-    const MediaItem* highest = &pool[0];
+    MediaItem highest = pool[0];
     for (int i = 1; i < pool.size(); ++i) {
-        if (pool[i].rating > highest->rating) {
-            highest = &pool[i];
+        if (pool[i].rating > highest.rating) {
+            highest = pool[i];
         }
     }
     return highest;

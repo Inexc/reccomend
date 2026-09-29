@@ -493,8 +493,10 @@ void HomePage::buildCarousel(QHBoxLayout* row, const QList<MediaItem>& items) {
 }
 
 void HomePage::refresh() {
-    const MediaItem* featured = RecommendationService::pickFeatured(m_data->allItems(), m_data->getFavorites());
-    setHero(featured);
+    MediaItem featured = RecommendationService::pickFeatured(m_data->allItems(), m_data->getFavorites());
+    if (!featured.id.isEmpty()) {
+        setHero(&featured);
+    }
     buildFavoritesList();
     buildGenreChips();
 

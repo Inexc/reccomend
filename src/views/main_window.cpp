@@ -92,8 +92,12 @@ void MainWindow::setupUi() {
 }
 
 void MainWindow::showFeaturedDefault() {
-    const MediaItem* featured = RecommendationService::pickFeatured(m_data.allItems(), m_data.getFavorites());
-    m_detailsPanel->showItem(featured);
+    MediaItem featured = RecommendationService::pickFeatured(m_data.allItems(), m_data.getFavorites());
+    if (!featured.id.isEmpty()) {
+        m_detailsPanel->showItem(&featured);
+    } else {
+        m_detailsPanel->showItem(nullptr);
+    }
 }
 
 void MainWindow::openItem(const MediaItem& item) {

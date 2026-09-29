@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QStyle>
 
 Sidebar::Sidebar(QWidget* parent)
     : QWidget(parent) {
