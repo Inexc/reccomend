@@ -1,40 +1,32 @@
-## Visual Studio / .NET
+# C++ / Qt / CMake
+build/
+build-*/
+CMakeLists.txt.user
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+*.exp
+*.pdb
+*.ilk
+.ninja_*
+.qt/
+.cache/
+
+# Visual Studio / .NET
 [Bb]in/
 [Oo]bj/
 .vs/
 *.user
 *.userprefs
 *.suo
-*.userosscache
 *.sln.docstates
-*.ide/
 .vscode/
 
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Bb]uild/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-
-# ReSharper / Rider
-_ReSharper*/
-*.DotSettings.user
-
-# NuGet Packages
-*.nupkg
-packages/
-
-# Test Results
-TestResults/
-*.trx
-
-# Windows Temporary Files
+# Windows
 Thumbs.db
-ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
