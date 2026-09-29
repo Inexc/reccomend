@@ -1,0 +1,40 @@
+## Visual Studio / .NET
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.userprefs
+*.suo
+*.userosscache
+*.sln.docstates
+*.ide/
+.vscode/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# ReSharper / Rider
+_ReSharper*/
+*.DotSettings.user
+
+# NuGet Packages
+*.nupkg
+packages/
+
+# Test Results
+TestResults/
+*.trx
+
+# Windows Temporary Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
