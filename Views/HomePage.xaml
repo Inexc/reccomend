@@ -9,10 +9,12 @@
             <Grid HorizontalAlignment="Left" Margin="0,0,0,28" Width="460">
                 <Border x:Name="SearchBoxContainer"
                         Background="{StaticResource CardBrush}"
-                        BorderBrush="{StaticResource BorderBrush2}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Height="42">
+                    <Border.BorderBrush>
+                        <SolidColorBrush x:Name="SearchBorderBrush" Color="#2A2026"/>
+                    </Border.BorderBrush>
                     <Grid Margin="12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -41,7 +43,7 @@
                         <Button x:Name="ClearSearchBtn" Grid.Column="2" Content="✕"
                                 Style="{StaticResource GhostButton}" Padding="7,3" FontSize="11"
                                 VerticalAlignment="Center" Margin="6,0,0,0"
-                                Visibility="Collapsed" Click="ClearSearchBtn_Click"/>
+                                Visibility="Collapsed" Opacity="0" Click="ClearSearchBtn_Click"/>
                     </Grid>
                 </Border>
 
@@ -72,7 +74,10 @@
                             </Grid>
 
                             <!-- Пустой результат -->
-                            <StackPanel x:Name="DropdownEmptyState" Visibility="Collapsed" Margin="0,16,0,16" HorizontalAlignment="Center">
+                            <StackPanel x:Name="DropdownEmptyState" Visibility="Collapsed" Margin="0,16,0,16" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                <StackPanel.RenderTransform>
+                                    <TranslateTransform x:Name="DropdownEmptyTranslate" X="0" Y="0"/>
+                                </StackPanel.RenderTransform>
                                 <TextBlock Text="🔍" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,8" Opacity="0.5"/>
                                 <TextBlock Text="Ничего не найдено" Style="{StaticResource H3}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
                                 <TextBlock Text="Попробуйте изменить запрос или использовать другое название."

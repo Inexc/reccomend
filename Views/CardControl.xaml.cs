@@ -74,15 +74,15 @@ namespace MovieBookRecommender.Views
             var isFav = _data.IsFavorite(Item.Id);
             UpdateFavIcon(animate: true);
 
-            // Пульсирующая анимация (feedback) при нажатии на сердечко
+            // Пульсирующая анимация (feedback) при нажатии на сердечко: 100% -> 115% -> 100% (180 ms)
             AnimateHeartPulse();
 
             // Показываем ненавязчивое уведомление внизу экрана
             var mainWin = Application.Current.MainWindow as MainWindow;
             if (isFav)
-                mainWin?.ShowToast($"«{Item.Title}» добавлено в избранное", "♥");
+                mainWin?.ShowToast("Добавлено в избранное", "♥");
             else
-                mainWin?.ShowToast($"«{Item.Title}» удалено из избранного", "♡");
+                mainWin?.ShowToast("Удалено из избранного", "♡");
 
             FavoriteChanged?.Invoke(Item);
         }
@@ -91,11 +91,11 @@ namespace MovieBookRecommender.Views
         {
             var anim = new DoubleAnimationUsingKeyFrames();
             anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.35, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(110)))
+            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.15, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(90)))
             {
-                EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 }
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             });
-            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(220)))
+            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180)))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             });
@@ -112,10 +112,11 @@ namespace MovieBookRecommender.Views
 
         private void RootBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
         {
-            AnimateScale(1.025);
-            AnimateImageZoom(1.05);
-            AnimateOpacity(BrightenOverlay, 0.05);
-            AnimateShadow(opacity: 0.48, blur: 20);
+            AnimateScale(1.03);
+            AnimateImageZoom(1.04);
+            AnimateOpacity(BrightenOverlay, 0.04);
+            AnimateOpacity(BottomGradient, 1.0);
+            AnimateShadow(opacity: 0.52, blur: 20);
 
             // Кнопка избранного становится более заметной
             HeartBadge.BeginAnimation(UIElement.OpacityProperty,
@@ -127,6 +128,7 @@ namespace MovieBookRecommender.Views
             AnimateScale(1.0);
             AnimateImageZoom(1.0);
             AnimateOpacity(BrightenOverlay, 0);
+            AnimateOpacity(BottomGradient, 0.88);
             AnimateShadow(opacity: 0.25, blur: 10);
 
             var isFav = _data?.IsFavorite(Item?.Id ?? "") ?? false;

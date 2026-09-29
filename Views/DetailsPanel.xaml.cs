@@ -52,6 +52,35 @@ namespace MovieBookRecommender.Views
         public void ShowItem(MediaItem? item)
         {
             CurrentItem = item;
+
+            if (ContentPanel.Children.Count == 0)
+            {
+                PopulateItem(item);
+                AnimateIn();
+                return;
+            }
+
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(70));
+            fadeOut.Completed += (_, _) =>
+            {
+                PopulateItem(item);
+                AnimateIn();
+            };
+            ContentPanel.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private void AnimateIn()
+        {
+            ContentTranslate.Y = 10;
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(130)) { EasingFunction = ease };
+            var slideUp = new DoubleAnimation(10.0, 0.0, TimeSpan.FromMilliseconds(130)) { EasingFunction = ease };
+            ContentPanel.BeginAnimation(OpacityProperty, fadeIn);
+            ContentTranslate.BeginAnimation(TranslateTransform.YProperty, slideUp);
+        }
+
+        private void PopulateItem(MediaItem? item)
+        {
             ContentPanel.Children.Clear();
 
             if (item is null)
@@ -167,9 +196,9 @@ namespace MovieBookRecommender.Views
 
                 var mainWin = Application.Current.MainWindow as MainWindow;
                 if (isFav)
-                    mainWin?.ShowToast($"«{item.Title}» добавлено в избранное", "♥");
+                    mainWin?.ShowToast("Добавлено в избранное", "♥");
                 else
-                    mainWin?.ShowToast($"«{item.Title}» удалено из избранного", "♡");
+                    mainWin?.ShowToast("Удалено из избранного", "♡");
 
                 FavoriteChanged?.Invoke(item);
             };

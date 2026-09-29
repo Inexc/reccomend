@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using MovieBookRecommender.Models;
 using MovieBookRecommender.Services;
@@ -82,7 +83,25 @@ namespace MovieBookRecommender.Views
         {
             var hasText = !string.IsNullOrEmpty(SearchBox.Text);
             SearchPlaceholder.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
-            ClearSearchBtn.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+
+            if (hasText)
+            {
+                if (ClearSearchBtn.Visibility != Visibility.Visible)
+                {
+                    ClearSearchBtn.Visibility = Visibility.Visible;
+                    ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150)));
+                }
+            }
+            else
+            {
+                if (ClearSearchBtn.Visibility == Visibility.Visible)
+                {
+                    var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(150));
+                    fadeOut.Completed += (_, _) => ClearSearchBtn.Visibility = Visibility.Collapsed;
+                    ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                }
+            }
+
             UpdateResetButtonVisibility();
             if (!_suppressFilterEvents)
                 Refresh();
@@ -90,12 +109,18 @@ namespace MovieBookRecommender.Views
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"];
+            var accent = (System.Windows.Media.SolidColorBrush)Application.Current.Resources["AccentBrush"];
+            SearchBorderBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty,
+                new ColorAnimation(accent.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(180)));
         }
 
         private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (System.Windows.Media.Brush)Application.Current.Resources["BorderBrush2"];
+            var border2 = (System.Windows.Media.SolidColorBrush)Application.Current.Resources["BorderBrush2"];
+            SearchBorderBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty,
+                new ColorAnimation(border2.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.8, TimeSpan.FromMilliseconds(180)));
         }
 
         private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
@@ -178,6 +203,12 @@ namespace MovieBookRecommender.Views
             if (items.Count == 0)
             {
                 EmptyState.Visibility = Visibility.Visible;
+                EmptyTranslate.Y = -8;
+                EmptyState.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200)));
+                EmptyTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-8.0, 0.0, TimeSpan.FromMilliseconds(200))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
                 return;
             }
 

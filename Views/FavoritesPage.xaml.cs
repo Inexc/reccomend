@@ -100,6 +100,12 @@ namespace MovieBookRecommender.Views
             {
                 EmptyState.Visibility = Visibility.Visible;
                 CardsScroll.Visibility = Visibility.Collapsed;
+                EmptyTranslate.Y = -8;
+                EmptyState.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200)));
+                EmptyTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(-8.0, 0.0, TimeSpan.FromMilliseconds(200))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
                 return;
             }
 

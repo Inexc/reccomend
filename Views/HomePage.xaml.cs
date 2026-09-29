@@ -69,6 +69,29 @@ namespace MovieBookRecommender.Views
         private void SetHero(MediaItem? item)
         {
             if (item is null) return;
+
+            if (_heroItem != null && _heroItem.Id != item.Id)
+            {
+                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(80));
+                fadeOut.Completed += (_, _) =>
+                {
+                    ApplyHeroData(item);
+                    var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150))
+                    {
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    HeroFrame.BeginAnimation(OpacityProperty, fadeIn);
+                };
+                HeroFrame.BeginAnimation(OpacityProperty, fadeOut);
+            }
+            else
+            {
+                ApplyHeroData(item);
+            }
+        }
+
+        private void ApplyHeroData(MediaItem item)
+        {
             _heroItem = item;
 
             HeroGenres.Children.Clear();
@@ -124,9 +147,9 @@ namespace MovieBookRecommender.Views
             BuildFavoritesList();
 
             if (isFav)
-                _app.ShowToast($"«{_heroItem.Title}» добавлено в избранное", "♥");
+                _app.ShowToast("Добавлено в избранное", "♥");
             else
-                _app.ShowToast($"«{_heroItem.Title}» удалено из избранного", "♡");
+                _app.ShowToast("Удалено из избранного", "♡");
 
             _app.OnFavoriteChanged(_heroItem);
         }
@@ -262,7 +285,24 @@ namespace MovieBookRecommender.Views
         {
             var hasText = !string.IsNullOrWhiteSpace(SearchBox.Text);
             SearchPlaceholder.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
-            ClearSearchBtn.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+
+            if (hasText)
+            {
+                if (ClearSearchBtn.Visibility != Visibility.Visible)
+                {
+                    ClearSearchBtn.Visibility = Visibility.Visible;
+                    ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150)));
+                }
+            }
+            else
+            {
+                if (ClearSearchBtn.Visibility == Visibility.Visible)
+                {
+                    var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(150));
+                    fadeOut.Completed += (_, _) => ClearSearchBtn.Visibility = Visibility.Collapsed;
+                    ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                }
+            }
 
             if (!hasText)
             {
@@ -277,7 +317,10 @@ namespace MovieBookRecommender.Views
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+            var accent = (SolidColorBrush)Application.Current.Resources["AccentBrush"];
+            SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(accent.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(180)));
+
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
             {
                 PerformSearch(SearchBox.Text.Trim());
@@ -287,7 +330,10 @@ namespace MovieBookRecommender.Views
 
         private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["BorderBrush2"];
+            var border2 = (SolidColorBrush)Application.Current.Resources["BorderBrush2"];
+            SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(border2.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.8, TimeSpan.FromMilliseconds(180)));
+
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             timer.Tick += (_, _) =>
             {
@@ -347,6 +393,12 @@ namespace MovieBookRecommender.Views
             if (total == 0)
             {
                 DropdownEmptyState.Visibility = Visibility.Visible;
+                DropdownEmptyTranslate.Y = -8;
+                DropdownEmptyState.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180)));
+                DropdownEmptyTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-8.0, 0.0, TimeSpan.FromMilliseconds(180))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
                 DropdownMoviesSection.Visibility = Visibility.Collapsed;
                 DropdownSeparator.Visibility = Visibility.Collapsed;
                 DropdownBooksSection.Visibility = Visibility.Collapsed;

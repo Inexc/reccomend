@@ -62,21 +62,37 @@ namespace MovieBookRecommender.Views
             _app.ShowToast("Настройки сохранены", "⚙");
         }
 
+        private bool _confirmClear;
+        private System.Windows.Threading.DispatcherTimer? _clearResetTimer;
+
         private void ClearFavorites_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "Вы действительно хотите очистить весь список избранного?",
-                "Подтверждение",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (sender is not Button btn) return;
 
-            if (result == MessageBoxResult.Yes)
+            if (!_confirmClear)
             {
-                _data.ClearFavorites();
-                UpdateFavoritesCount();
-                _app.OnFavoriteChanged(null);
-                _app.ShowToast("Список избранного очищен", "✓");
+                _confirmClear = true;
+                btn.Content = "Точно очистить? Нажмите ещё раз";
+                _clearResetTimer?.Stop();
+                _clearResetTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
+                _clearResetTimer.Tick += (_, _) =>
+                {
+                    _clearResetTimer.Stop();
+                    _confirmClear = false;
+                    btn.Content = "Очистить избранное";
+                };
+                _clearResetTimer.Start();
+                return;
             }
+
+            _clearResetTimer?.Stop();
+            _confirmClear = false;
+            btn.Content = "Очистить избранное";
+
+            _data.ClearFavorites();
+            UpdateFavoritesCount();
+            _app.OnFavoriteChanged(null);
+            _app.ShowToast("Список избранного очищен", "✓");
         }
     }
 }

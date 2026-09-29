@@ -5,6 +5,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 
+using System.Windows.Media.Animation;
+
 namespace MovieBookRecommender.Views
 {
     public partial class Sidebar : UserControl
@@ -20,12 +22,18 @@ namespace MovieBookRecommender.Views
             ("settings", "⚙", "Настройки"),
         };
 
+        private static readonly Color MutedColor = Color.FromRgb(0xA3, 0x9A, 0x95);
+        private static readonly Color WhiteColor = Colors.White;
+        private static readonly Color HoverBgColor = Color.FromArgb(0x80, 0x22, 0x1A, 0x1E);
+
         private class NavRow
         {
             public Border Pill = null!;
             public TextBlock Icon = null!;
             public TextBlock Label = null!;
             public TextBlock? BadgeText;
+            public SolidColorBrush BgBrush = null!;
+            public SolidColorBrush FgBrush = null!;
         }
 
         private readonly Dictionary<string, NavRow> _rows = new();
@@ -42,25 +50,29 @@ namespace MovieBookRecommender.Views
         {
             foreach (var (key, icon, label) in Items)
             {
+                var bgBrush = new SolidColorBrush(Colors.Transparent);
+                var fgBrush = new SolidColorBrush(MutedColor);
+
                 var pill = new Border
                 {
                     CornerRadius = new CornerRadius(8),
                     Margin = new Thickness(0, 4, 0, 4),
                     Padding = new Thickness(10, 8, 10, 8),
                     Cursor = Cursors.Hand,
-                    Background = Brushes.Transparent
+                    Background = bgBrush
                 };
 
                 var content = new StackPanel { Orientation = Orientation.Horizontal };
                 var iconText = new TextBlock
                 {
                     Text = icon, FontSize = 13, Width = 20, Margin = new Thickness(0, 0, 8, 0),
-                    Foreground = (Brush)Application.Current.Resources["TextMutedBrush"]
+                    Foreground = fgBrush,
+                    Opacity = 0.82
                 };
                 var labelText = new TextBlock
                 {
                     Text = label, FontSize = 12,
-                    Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
+                    Foreground = fgBrush,
                     VerticalAlignment = VerticalAlignment.Center
                 };
                 content.Children.Add(iconText);
@@ -85,11 +97,27 @@ namespace MovieBookRecommender.Views
 
                 pill.MouseEnter += (_, _) =>
                 {
-                    if (_active != key) pill.Background = (Brush)Application.Current.Resources["CardBrush"];
+                    if (_active != key)
+                    {
+                        bgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(HoverBgColor, TimeSpan.FromMilliseconds(160)));
+                        fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(WhiteColor, TimeSpan.FromMilliseconds(160)));
+                        iconText.BeginAnimation(UIElement.OpacityProperty,
+                            new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(160)));
+                    }
                 };
                 pill.MouseLeave += (_, _) =>
                 {
-                    if (_active != key) pill.Background = Brushes.Transparent;
+                    if (_active != key)
+                    {
+                        bgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(Colors.Transparent, TimeSpan.FromMilliseconds(180)));
+                        fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(MutedColor, TimeSpan.FromMilliseconds(180)));
+                        iconText.BeginAnimation(UIElement.OpacityProperty,
+                            new DoubleAnimation(0.82, TimeSpan.FromMilliseconds(180)));
+                    }
                 };
                 pill.MouseLeftButtonUp += (_, _) =>
                 {
@@ -97,7 +125,15 @@ namespace MovieBookRecommender.Views
                     Navigate?.Invoke(key);
                 };
 
-                _rows[key] = new NavRow { Pill = pill, Icon = iconText, Label = labelText, BadgeText = badge };
+                _rows[key] = new NavRow
+                {
+                    Pill = pill,
+                    Icon = iconText,
+                    Label = labelText,
+                    BadgeText = badge,
+                    BgBrush = bgBrush,
+                    FgBrush = fgBrush
+                };
                 NavPanel.Children.Add(pill);
             }
         }
@@ -127,17 +163,29 @@ namespace MovieBookRecommender.Views
             foreach (var (k, row) in _rows)
             {
                 var isActive = k == key;
-                row.Pill.Background = isActive
-                    ? (Brush)Application.Current.Resources["AccentGradient"]
-                    : Brushes.Transparent;
-                row.Pill.Effect = isActive
-                    ? (System.Windows.Media.Effects.Effect)Application.Current.Resources["AccentGlow"]
-                    : null;
-                row.Icon.Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["TextMutedBrush"];
-                row.Label.Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["TextMutedBrush"];
-                if (row.BadgeText != null)
+                if (isActive)
                 {
-                    row.BadgeText.Foreground = isActive ? Brushes.White : (Brush)Application.Current.Resources["Accent2Brush"];
+                    row.Pill.Background = (Brush)Application.Current.Resources["AccentGradient"];
+                    row.Pill.Effect = (System.Windows.Media.Effects.Effect)Application.Current.Resources["AccentGlow"];
+                    row.FgBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                    row.FgBrush.Color = WhiteColor;
+                    row.Icon.BeginAnimation(UIElement.OpacityProperty, null);
+                    row.Icon.Opacity = 1.0;
+                    if (row.BadgeText != null)
+                        row.BadgeText.Foreground = Brushes.White;
+                }
+                else
+                {
+                    row.Pill.Background = row.BgBrush;
+                    row.Pill.Effect = null;
+                    row.BgBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                    row.BgBrush.Color = Colors.Transparent;
+                    row.FgBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                    row.FgBrush.Color = MutedColor;
+                    row.Icon.BeginAnimation(UIElement.OpacityProperty, null);
+                    row.Icon.Opacity = 0.82;
+                    if (row.BadgeText != null)
+                        row.BadgeText.Foreground = (Brush)Application.Current.Resources["Accent2Brush"];
                 }
             }
         }

@@ -97,9 +97,16 @@ namespace MovieBookRecommender
                 _pages[key] = CreatePage(key);
 
             var page = _pages[key];
+            page.Opacity = 0.0;
             CenterHost.Children.Clear();
             CenterHost.Children.Add(page);
             _currentPageKey = key;
+
+            var pageFade = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            page.BeginAnimation(UIElement.OpacityProperty, pageFade);
 
             switch (key)
             {
@@ -189,20 +196,19 @@ namespace MovieBookRecommender
 
             _toastTimer?.Stop();
 
-            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
+            var easeOut = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeOut };
+            var slideUp = new DoubleAnimation(10.0, 0.0, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeOut };
+
             ToastContainer.BeginAnimation(OpacityProperty, fadeIn);
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, slideUp);
 
             _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.0) };
             _toastTimer.Tick += (_, _) =>
             {
                 _toastTimer.Stop();
-                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(220))
-                {
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-                };
+                var easeIn = new QuadraticEase { EasingMode = EasingMode.EaseIn };
+                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(220)) { EasingFunction = easeIn };
                 ToastContainer.BeginAnimation(OpacityProperty, fadeOut);
             };
             _toastTimer.Start();
