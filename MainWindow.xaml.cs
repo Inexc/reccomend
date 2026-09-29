@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using MovieBookRecommender.Models;
 using MovieBookRecommender.Services;
 using MovieBookRecommender.Views;
@@ -13,8 +16,10 @@ namespace MovieBookRecommender
     public partial class MainWindow : Window
     {
         private readonly DataManager _data = new();
+        private readonly SettingsManager _settings = new();
         private readonly Dictionary<string, UserControl> _pages = new();
         private string _currentPageKey = "home";
+        private DispatcherTimer? _toastTimer;
 
         public MainWindow()
         {
@@ -25,6 +30,18 @@ namespace MovieBookRecommender
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _data.Load();
+            _settings.Load();
+
+            // Восстановление размеров и состояния окна из сохранённых настроек
+            if (_settings.Settings.WindowWidth >= MinWidth)
+                Width = _settings.Settings.WindowWidth;
+            if (_settings.Settings.WindowHeight >= MinHeight)
+                Height = _settings.Settings.WindowHeight;
+            if (_settings.Settings.IsMaximized)
+                WindowState = WindowState.Maximized;
+
+            ApplyTheme(_settings.Settings.Theme, save: false);
+            ApplyScale(_settings.Settings.Scale, save: false);
 
             LoadingOverlay.Visibility = Visibility.Visible;
             await EnsureAllPostersAsync();
@@ -36,6 +53,26 @@ namespace MovieBookRecommender
 
             ShowFeaturedDefault();
             ShowPage("home");
+
+            SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (WindowState == WindowState.Normal)
+            {
+                _settings.Settings.WindowWidth = Width;
+                _settings.Settings.WindowHeight = Height;
+            }
+            else if (RestoreBounds.Width > 0 && RestoreBounds.Height > 0)
+            {
+                _settings.Settings.WindowWidth = RestoreBounds.Width;
+                _settings.Settings.WindowHeight = RestoreBounds.Height;
+            }
+            _settings.Settings.IsMaximized = WindowState == WindowState.Maximized;
+            _settings.Save();
+
+            base.OnClosing(e);
         }
 
         /// <summary>Скачивает/генерирует постеры для всех элементов параллельно
@@ -81,6 +118,7 @@ namespace MovieBookRecommender
             }
 
             SidebarControl.SetActive(key);
+            SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
         }
 
         private UserControl CreatePage(string key)
@@ -105,7 +143,7 @@ namespace MovieBookRecommender
                     return favPage;
                 case "settings":
                     var settingsPage = new SettingsPage();
-                    settingsPage.Initialize(_data, this);
+                    settingsPage.Initialize(_data, this, _settings);
                     return settingsPage;
                 default:
                     throw new ArgumentException($"Неизвестный раздел: {key}");
@@ -119,6 +157,7 @@ namespace MovieBookRecommender
             {
                 case ListPage lp: lp.Refresh(); break;
                 case FavoritesPage fp: fp.Refresh(); break;
+                case HomePage hp: hp.RefreshData(); break;
             }
         }
 
@@ -126,13 +165,111 @@ namespace MovieBookRecommender
         public void OpenItem(MediaItem item) => DetailsPanelControl.ShowItem(item);
 
         /// <summary>Вызывается при клике на ♡/♥ на любой карточке.</summary>
-        public void OnFavoriteChanged(MediaItem item)
+        public void OnFavoriteChanged(MediaItem? item)
         {
+            SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
+
             if (_currentPageKey == "favorites")
                 RefreshCurrentPage();
+            else if (_currentPageKey == "home" && _pages.TryGetValue("home", out var page) && page is HomePage hp)
+                hp.RefreshData();
 
             if (DetailsPanelControl.CurrentItem != null)
                 DetailsPanelControl.ShowItem(DetailsPanelControl.CurrentItem);
+        }
+
+        /// <summary>
+        /// Показывает аккуратное всплывающее Toast-уведомление внизу экрана
+        /// длительностью 2 секунды без использования нативных MessageBox.
+        /// </summary>
+        public void ShowToast(string message, string icon = "✓")
+        {
+            ToastMessage.Text = message;
+            ToastIcon.Text = icon;
+
+            _toastTimer?.Stop();
+
+            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            ToastContainer.BeginAnimation(OpacityProperty, fadeIn);
+
+            _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.0) };
+            _toastTimer.Tick += (_, _) =>
+            {
+                _toastTimer.Stop();
+                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                };
+                ToastContainer.BeginAnimation(OpacityProperty, fadeOut);
+            };
+            _toastTimer.Start();
+        }
+
+        public void ApplyTheme(string theme, bool save = true)
+        {
+            Color accentColor, hoverColor, pressedColor;
+            switch (theme)
+            {
+                case "Тёмная (Индиго)":
+                    accentColor = Color.FromRgb(0x5B, 0x67, 0xA8);
+                    hoverColor = Color.FromRgb(0x6F, 0x7C, 0xC2);
+                    pressedColor = Color.FromRgb(0x48, 0x53, 0x8E);
+                    break;
+                case "Тёмная (Изумруд)":
+                    accentColor = Color.FromRgb(0x4A, 0x8B, 0x6B);
+                    hoverColor = Color.FromRgb(0x5B, 0xA0, 0x7E);
+                    pressedColor = Color.FromRgb(0x3B, 0x74, 0x58);
+                    break;
+                default:
+                    accentColor = Color.FromRgb(0xC1, 0x66, 0x6B);
+                    hoverColor = Color.FromRgb(0xCD, 0x7A, 0x7F);
+                    pressedColor = Color.FromRgb(0xA8, 0x55, 0x5A);
+                    theme = "Тёмная (Тёплый нуар)";
+                    break;
+            }
+
+            Application.Current.Resources["AccentBrush"] = new SolidColorBrush(accentColor);
+            Application.Current.Resources["AccentHoverBrush"] = new SolidColorBrush(hoverColor);
+            Application.Current.Resources["AccentPressedBrush"] = new SolidColorBrush(pressedColor);
+
+            var gradient = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1)
+            };
+            gradient.GradientStops.Add(new GradientStop(accentColor, 0));
+            gradient.GradientStops.Add(new GradientStop(pressedColor, 1));
+            Application.Current.Resources["AccentGradient"] = gradient;
+
+            SidebarControl?.SetActive(_currentPageKey);
+            SidebarControl?.UpdateFavoritesBadge(_data.Favorites.Count);
+
+            if (save)
+            {
+                _settings.Settings.Theme = theme;
+                _settings.Save();
+            }
+        }
+
+        public void ApplyScale(string scale, bool save = true)
+        {
+            double s = scale switch
+            {
+                "Компактный" or "Компактный (90%)" => 0.9,
+                "Крупный" or "Крупный (110%)" => 1.1,
+                _ => 1.0
+            };
+            AppScaleTransform.ScaleX = s;
+            AppScaleTransform.ScaleY = s;
+
+            if (save)
+            {
+                _settings.Settings.Scale = scale;
+                _settings.Save();
+            }
         }
     }
 }

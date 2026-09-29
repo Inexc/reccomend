@@ -35,6 +35,58 @@ namespace MovieBookRecommender.Services
             Http.DefaultRequestHeaders.UserAgent.ParseAdd("movie-book-recommender/1.0");
         }
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, ImageSource> ImageCache = new();
+
+        /// <summary>
+        /// Возвращает кэшированное изображение постера. Декодируется из файла ровно один раз
+        /// и замораживается (Freeze) для максимальной производительности интерфейса.
+        /// </summary>
+        public static ImageSource? GetImage(MediaItem? item)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.Poster))
+                return null;
+
+            if (ImageCache.TryGetValue(item.Poster, out var cached))
+                return cached;
+
+            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.Poster);
+            if (!File.Exists(fullPath))
+            {
+                try
+                {
+                    GeneratePlaceholder(item, fullPath);
+                }
+                catch
+                {
+                    // безопасно игнорируем ошибку генерации
+                }
+            }
+
+            if (File.Exists(fullPath))
+            {
+                try
+                {
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.UriSource = new Uri(fullPath, UriKind.Absolute);
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    ImageCache[item.Poster] = bmp;
+                    return bmp;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>Очистка кэша изображений при необходимости.</summary>
+        public static void ClearCache() => ImageCache.Clear();
+
         /// <summary>Гарантирует, что у элемента есть файл постера на диске
         /// (скачивает при возможности, иначе генерирует заглушку).</summary>
         public static async Task EnsurePosterAsync(MediaItem item)

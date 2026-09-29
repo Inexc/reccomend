@@ -32,7 +32,19 @@
 
         <ScrollViewer x:Name="CardsScroll" VerticalScrollBarVisibility="Auto" Margin="48,0,48,40"
                       SizeChanged="CardsScroll_SizeChanged">
-            <WrapPanel x:Name="CardsPanel" Orientation="Horizontal"/>
+            <Grid>
+                <!-- Состояние «Ничего не найдено» -->
+                <Border x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="🔍" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,12" Opacity="0.5"/>
+                        <TextBlock Text="Ничего не найдено" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                        <TextBlock Text="Попробуйте изменить поисковый запрос или выбрать другой жанр."
+                                   Style="{StaticResource BodyText}" HorizontalAlignment="Center" Opacity="0.7"/>
+                    </StackPanel>
+                </Border>
+
+                <WrapPanel x:Name="CardsPanel" Orientation="Horizontal"/>
+            </Grid>
         </ScrollViewer>
 
     </DockPanel>

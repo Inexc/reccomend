@@ -25,7 +25,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Тема оформления" Style="{StaticResource H3}"
                                        Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="ThemeCombo" Grid.Column="1" Style="{StaticResource DarkCombo}" Width="160"
+                            <ComboBox x:Name="ThemeCombo" Grid.Column="1" Style="{StaticResource DarkCombo}" Width="210"
                                       SelectionChanged="ThemeCombo_SelectionChanged"/>
                         </Grid>
 
@@ -36,7 +36,8 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Размер интерфейса" Style="{StaticResource H3}"
                                        Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="ScaleCombo" Grid.Column="1" Style="{StaticResource DarkCombo}" Width="160"/>
+                            <ComboBox x:Name="ScaleCombo" Grid.Column="1" Style="{StaticResource DarkCombo}" Width="210"
+                                      SelectionChanged="ScaleCombo_SelectionChanged"/>
                         </Grid>
                     </StackPanel>
                 </Border>

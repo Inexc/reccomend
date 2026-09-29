@@ -40,8 +40,13 @@
         <Border x:Name="EmptyState" DockPanel.Dock="Top" Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,60,0,0">
                 <TextBlock Text="♡" FontSize="48" Foreground="{StaticResource TextFaintBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-                <TextBlock Text="Здесь пока ничего нет" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                <TextBlock Text="Добавляйте фильмы и книги в избранное, чтобы быстро найти их позже." Style="{StaticResource BodyText}" HorizontalAlignment="Center" MaxWidth="380" Opacity="0.7"/>
+                <TextBlock Text="У вас пока нет избранного" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                <TextBlock Text="Добавляйте фильмы и книги, нажимая на иконку сердечка на карточках"
+                           Style="{StaticResource BodyText}" HorizontalAlignment="Center" MaxWidth="440" TextAlignment="Center" Opacity="0.7" Margin="0,0,0,24"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="Перейти к фильмам" Style="{StaticResource AccentButton}" Click="GoToMovies_Click" Margin="0,0,12,0" Padding="18,10"/>
+                    <Button Content="Перейти к книгам" Style="{StaticResource GhostButton}" Click="GoToBooks_Click" Padding="18,10"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 

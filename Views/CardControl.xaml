@@ -11,8 +11,10 @@
         </Border.RenderTransform>
 
         <Border x:Name="PosterFrame" Background="{StaticResource CardBrush}"
-                CornerRadius="12" ClipToBounds="True" Height="256"
-                Effect="{StaticResource CardRestShadow}">
+                CornerRadius="12" ClipToBounds="True" Height="256">
+            <Border.Effect>
+                <DropShadowEffect x:Name="CardShadowEffect" Color="#000000" BlurRadius="10" ShadowDepth="3" Opacity="0.25"/>
+            </Border.Effect>
             <Grid>
                 <Image x:Name="PosterImage" Stretch="UniformToFill" RenderTransformOrigin="0.5,0.5">
                     <Image.RenderTransform>
@@ -27,7 +29,11 @@
                 <Border x:Name="HeartBadge" Width="28" Height="28" CornerRadius="14"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0"
                         Cursor="Hand" MouseLeftButtonUp="FavIcon_MouseLeftButtonUp"
-                        MouseEnter="HeartBadge_MouseEnter" MouseLeave="HeartBadge_MouseLeave">
+                        MouseEnter="HeartBadge_MouseEnter" MouseLeave="HeartBadge_MouseLeave"
+                        Opacity="0.75" RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <ScaleTransform x:Name="HeartScale" ScaleX="1" ScaleY="1"/>
+                    </Border.RenderTransform>
                     <Border.Background>
                         <SolidColorBrush x:Name="HeartBrush" Color="#DD161114"/>
                     </Border.Background>

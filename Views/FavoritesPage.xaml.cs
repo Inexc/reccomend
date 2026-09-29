@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 using MovieBookRecommender.Services;
 
 namespace MovieBookRecommender.Views
@@ -114,7 +115,17 @@ namespace MovieBookRecommender.Views
                 card.FavoriteChanged += _ => Refresh();
                 CardsPanel.Children.Add(card);
             }
+
+            // Плавная анимация обновления
+            var anim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            CardsPanel.BeginAnimation(OpacityProperty, anim);
         }
+
+        private void GoToMovies_Click(object sender, RoutedEventArgs e) => _app.ShowPage("movies");
+        private void GoToBooks_Click(object sender, RoutedEventArgs e) => _app.ShowPage("books");
 
         private void UpdateStatistics(System.Collections.Generic.List<Models.MediaItem> items)
         {

@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using MovieBookRecommender.Services;
@@ -8,6 +9,7 @@ namespace MovieBookRecommender.Views
     {
         private DataManager _data = null!;
         private MainWindow _app = null!;
+        private SettingsManager _settingsManager = null!;
         private bool _initialized;
 
         public SettingsPage()
@@ -15,23 +17,30 @@ namespace MovieBookRecommender.Views
             InitializeComponent();
         }
 
-        public void Initialize(DataManager data, MainWindow app)
+        public void Initialize(DataManager data, MainWindow app, SettingsManager settingsManager)
         {
             _data = data;
             _app = app;
+            _settingsManager = settingsManager;
 
-            ThemeCombo.ItemsSource = new[] { "Тёмная", "Светлая" };
-            ThemeCombo.SelectedIndex = 0;
+            var themes = new[] { "Тёмная (Тёплый нуар)", "Тёмная (Индиго)", "Тёмная (Изумруд)" };
+            ThemeCombo.ItemsSource = themes;
+            var currentTheme = _settingsManager.Settings.Theme;
+            var themeIdx = Array.IndexOf(themes, currentTheme);
+            ThemeCombo.SelectedIndex = themeIdx >= 0 ? themeIdx : 0;
 
-            ScaleCombo.ItemsSource = new[] { "Компактный", "Обычный", "Крупный" };
-            ScaleCombo.SelectedIndex = 1;
+            var scales = new[] { "Компактный (90%)", "Обычный (100%)", "Крупный (110%)" };
+            ScaleCombo.ItemsSource = scales;
+            var currentScale = _settingsManager.Settings.Scale;
+            var scaleIdx = Array.IndexOf(scales, currentScale);
+            ScaleCombo.SelectedIndex = scaleIdx >= 0 ? scaleIdx : 1;
 
             UpdateFavoritesCount();
 
             _initialized = true;
         }
 
-        private void UpdateFavoritesCount()
+        public void UpdateFavoritesCount()
         {
             var count = _data.GetFavoriteItems().Count;
             FavoritesCountText.Text = count.ToString();
@@ -39,27 +48,34 @@ namespace MovieBookRecommender.Views
 
         private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_initialized) return;
-            if (ThemeCombo.SelectedItem as string == "Светлая")
-            {
-                MessageBox.Show(
-                    "В этой версии приложение оптимизировано под тёмную тему.\n" +
-                    "Переключение на светлую тему будет добавлено позже.",
-                    "Тема", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            if (!_initialized || ThemeCombo.SelectedItem == null) return;
+            var theme = ThemeCombo.SelectedItem.ToString()!;
+            _app.ApplyTheme(theme);
+            _app.ShowToast("Настройки сохранены", "⚙");
+        }
+
+        private void ScaleCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_initialized || ScaleCombo.SelectedItem == null) return;
+            var scale = ScaleCombo.SelectedItem.ToString()!;
+            _app.ApplyScale(scale);
+            _app.ShowToast("Настройки сохранены", "⚙");
         }
 
         private void ClearFavorites_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("Очистить весь список избранного?", "Подтверждение",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(
+                "Вы действительно хотите очистить весь список избранного?",
+                "Подтверждение",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
             if (result == MessageBoxResult.Yes)
             {
                 _data.ClearFavorites();
                 UpdateFavoritesCount();
-                MessageBox.Show("Список избранного очищен.", "Готово",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                _app.RefreshCurrentPage();
+                _app.OnFavoriteChanged(null);
+                _app.ShowToast("Список избранного очищен", "✓");
             }
         }
     }

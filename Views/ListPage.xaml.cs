@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 using MovieBookRecommender.Models;
 using MovieBookRecommender.Services;
 
@@ -37,7 +38,7 @@ namespace MovieBookRecommender.Views
             GenreCombo.ItemsSource = genres;
             GenreCombo.SelectedIndex = 0;
 
-            SortCombo.ItemsSource = new[] { "По рейтингу", "По названию" };
+            SortCombo.ItemsSource = new[] { "По рейтингу", "По названию", "Сначала новые" };
             SortCombo.SelectedIndex = 0;
             _suppressFilterEvents = false;
 
@@ -110,20 +111,22 @@ namespace MovieBookRecommender.Views
             if (!string.IsNullOrEmpty(genre) && genre != "Все")
                 items = items.Where(i => i.Genre.Contains(genre)).ToList();
 
-            items = (SortCombo.SelectedItem as string) == "По названию"
-                ? items.OrderBy(i => i.Title).ToList()
-                : items.OrderByDescending(i => i.Rating).ToList();
+            var sort = SortCombo.SelectedItem as string;
+            items = sort switch
+            {
+                "По названию" => items.OrderBy(i => i.Title).ToList(),
+                "Сначала новые" => items.OrderByDescending(i => i.Year).ThenByDescending(i => i.Rating).ToList(),
+                _ => items.OrderByDescending(i => i.Rating).ToList()
+            };
 
             CardsPanel.Children.Clear();
             if (items.Count == 0)
             {
-                CardsPanel.Children.Add(new TextBlock
-                {
-                    Text = "Ничего не найдено", Style = (Style)Application.Current.Resources["BodyText"],
-                    Margin = new Thickness(20, 40, 0, 0)
-                });
+                EmptyState.Visibility = Visibility.Visible;
                 return;
             }
+
+            EmptyState.Visibility = Visibility.Collapsed;
 
             var availableWidth = CardsScroll.ActualWidth;
             double? presetWidth = null;
@@ -142,6 +145,13 @@ namespace MovieBookRecommender.Views
                 card.FavoriteChanged += _app.OnFavoriteChanged;
                 CardsPanel.Children.Add(card);
             }
+
+            // Плавное обновление карточек (180ms)
+            var anim = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            CardsPanel.BeginAnimation(OpacityProperty, anim);
         }
     }
 }

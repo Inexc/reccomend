@@ -1,8 +1,10 @@
 using System;
-using System.IO;
+using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MovieBookRecommender.Models;
+using MovieBookRecommender.Services;
 
 namespace MovieBookRecommender.Views
 {
@@ -19,25 +21,36 @@ namespace MovieBookRecommender.Views
         public void Initialize(MediaItem item)
         {
             Item = item;
-            TitleText.Text = item.Title.Length > 14 ? item.Title[..12] + "…" : item.Title;
-
-            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.Poster);
-            try
-            {
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(fullPath, UriKind.Absolute);
-                bmp.EndInit();
-                bmp.Freeze();
-                PosterImage.Source = bmp;
-            }
-            catch (IOException) { }
+            TitleText.Text = item.Title.Length > 13 ? item.Title[..11] + "…" : item.Title;
+            PosterImage.Source = PosterService.GetImage(item);
         }
 
         private void Root_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            OpenRequested?.Invoke(Item);
+            if (Item != null)
+                OpenRequested?.Invoke(Item);
+        }
+
+        private void Root_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var anim = new DoubleAnimation(1.05, TimeSpan.FromMilliseconds(160))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            MiniScale.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
+            MiniScale.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
+            PosterBorder.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+        }
+
+        private void Root_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var anim = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(160))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            MiniScale.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
+            MiniScale.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
+            PosterBorder.BorderBrush = (Brush)Application.Current.Resources["BorderBrush2"];
         }
     }
 }
