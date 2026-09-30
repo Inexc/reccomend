@@ -113,8 +113,16 @@ namespace MovieBookRecommender.Views
             UpdateResetButtonVisibility();
             if (!_suppressFilterEvents)
             {
-                _searchDebounceTimer.Stop();
-                _searchDebounceTimer.Start();
+                if (!hasText)
+                {
+                    _searchDebounceTimer.Stop();
+                    Refresh();
+                }
+                else
+                {
+                    _searchDebounceTimer.Stop();
+                    _searchDebounceTimer.Start();
+                }
             }
         }
 
@@ -290,7 +298,7 @@ namespace MovieBookRecommender.Views
 
             var genre = GenreCombo.SelectedItem as string;
             if (!string.IsNullOrEmpty(genre) && genre != "Все жанры")
-                items = items.Where(i => i.Genre.Contains(genre)).ToList();
+                items = items.Where(i => i.Genre.Any(g => string.Equals(g, genre, StringComparison.OrdinalIgnoreCase))).ToList();
 
             var sort = SortCombo.SelectedItem as string;
             items = sort switch

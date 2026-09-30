@@ -247,8 +247,16 @@ namespace MovieBookRecommender.Views
                 }
             }
 
-            _searchDebounceTimer.Stop();
-            _searchDebounceTimer.Start();
+            if (!hasText)
+            {
+                _searchDebounceTimer.Stop();
+                ApplyFilterAndSort();
+            }
+            else
+            {
+                _searchDebounceTimer.Stop();
+                _searchDebounceTimer.Start();
+            }
         }
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)

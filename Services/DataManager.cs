@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MovieBookRecommender.Models;
 
 namespace MovieBookRecommender.Services
@@ -109,11 +110,14 @@ namespace MovieBookRecommender.Services
             return set.ToList();
         }
 
-        public static string NormalizeSearchText(string? text)
+        public static string Normalize(string? s)
         {
-            if (string.IsNullOrWhiteSpace(text)) return "";
-            return text.Trim().ToLowerInvariant().Replace('ё', 'е');
+            if (string.IsNullOrWhiteSpace(s)) return "";
+            var normalized = s.Trim().ToLowerInvariant().Replace('ё', 'е');
+            return Regex.Replace(normalized, @"\s+", " ");
         }
+
+        public static string NormalizeSearchText(string? text) => Normalize(text);
 
         public List<MediaItem> Search(string? query, IEnumerable<MediaItem>? pool = null)
         {
@@ -121,14 +125,14 @@ namespace MovieBookRecommender.Services
             if (string.IsNullOrWhiteSpace(query))
                 return source;
 
-            var normalizedQuery = NormalizeSearchText(query);
-            var words = normalizedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var normalizedQuery = Normalize(query);
+            var words = normalizedQuery.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 0)
                 return source;
 
             return source.Where(item =>
             {
-                var haystack = NormalizeSearchText($"{item.Title} {item.TitleEn} {item.Author} {item.GenreText} {item.Year}");
+                var haystack = Normalize($"{item.Title} {item.TitleEn} {item.Author} {item.GenreText} {item.Year}");
                 foreach (var word in words)
                 {
                     if (!haystack.Contains(word))
