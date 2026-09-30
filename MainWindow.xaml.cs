@@ -51,6 +51,7 @@ namespace MovieBookRecommender
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+            Closing += (_, _) => _data.Flush();
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -59,6 +60,7 @@ namespace MovieBookRecommender
             {
                 _data.Load();
                 _settings.Load();
+                _data.AutoSave = _settings.Settings.AutoSave;
 
                 // Восстановление размеров и состояния окна из сохранённых настроек
                 if (_settings.Settings.WindowWidth >= MinWidth)
@@ -562,12 +564,17 @@ namespace MovieBookRecommender
         }
 
         /// <summary>Вызывается при клике на ♡/♥ на любой карточке.</summary>
-        public void OnFavoriteChanged(MediaItem? item)
+        public void OnFavoriteChanged(MediaItem? item) => OnFavoriteChanged(item, false);
+
+        public void OnFavoriteChanged(MediaItem? item, bool skipFavoritesRefresh)
         {
             SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
 
             if (_currentPageKey == "favorites")
-                RefreshCurrentPage();
+            {
+                if (!skipFavoritesRefresh)
+                    RefreshCurrentPage();
+            }
             else if (_currentPageKey == "home" && _pages.TryGetValue("home", out var page) && page is HomePage hp)
                 hp.UpdateCardsFavoriteState();
             else if (_currentPageKey == "detail" && _pages.TryGetValue("detail", out var dPage) && dPage is DetailPage dp)
@@ -636,6 +643,11 @@ namespace MovieBookRecommender
             Application.Current.Resources["AccentBrush"] = new SolidColorBrush(accentColor);
             Application.Current.Resources["AccentHoverBrush"] = new SolidColorBrush(hoverColor);
             Application.Current.Resources["AccentPressedBrush"] = new SolidColorBrush(pressedColor);
+
+            Color buttonTextColor = (theme == "Тёмная (Индиго)")
+                ? Color.FromRgb(0xF2, 0xE9, 0xE4)
+                : Color.FromRgb(0x16, 0x11, 0x14);
+            Application.Current.Resources["AccentForegroundBrush"] = new SolidColorBrush(buttonTextColor);
 
             var gradient = new LinearGradientBrush
             {

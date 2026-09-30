@@ -283,6 +283,43 @@ namespace MovieBookRecommender.Views
             UpdateFavIcon(animate: true);
         }
 
+        private void CardControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                if (Item != null)
+                {
+                    OpenRequested?.Invoke(Item);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == System.Windows.Input.Key.Space)
+            {
+                FavIcon_MouseLeftButtonUp(HeartBadge, null!);
+                e.Handled = true;
+            }
+        }
+
+        private void CardControl_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            AnimateScale(1.015, 120);
+            AnimateColor(_frameBorderBrush, BorderHoverColor);
+            HeartBadge.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(120)));
+        }
+
+        private void CardControl_LostKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            if (!_isHovered)
+            {
+                AnimateScale(1.0, 120);
+                AnimateColor(_frameBorderBrush, BorderNormalColor);
+                var isFav = _data?.IsFavorite(Item?.Id ?? "") ?? false;
+                HeartBadge.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(isFav ? 1.0 : 0.80, TimeSpan.FromMilliseconds(120)));
+            }
+        }
+
         private void AnimateScale(double to, int durationMs = 120)
         {
             var duration = TimeSpan.FromMilliseconds(durationMs);

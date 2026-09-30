@@ -15,7 +15,8 @@
     <SolidColorBrush x:Key="Accent2Brush" Color="#D4B483"/>
     <SolidColorBrush x:Key="TextBrush" Color="#F2E9E4"/>
     <SolidColorBrush x:Key="TextMutedBrush" Color="#A6968F"/>
-    <SolidColorBrush x:Key="TextFaintBrush" Color="#6E5F5A"/>
+    <SolidColorBrush x:Key="TextFaintBrush" Color="#8A7A74"/>
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#161114"/>
     <SolidColorBrush x:Key="YellowBrush" Color="#D4B483"/>
     <SolidColorBrush x:Key="DangerBrush" Color="#B25360"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#7A9E7E"/>
@@ -128,7 +129,7 @@
 
     <Style x:Key="AccentButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-        <Setter Property="Foreground" Value="#161114"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
         <Setter Property="Padding" Value="20,11"/>

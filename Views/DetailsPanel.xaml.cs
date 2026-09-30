@@ -51,12 +51,38 @@ namespace MovieBookRecommender.Views
 
         private void Refresh_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            TriggerRefresh();
+        }
+
+        private void Refresh_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Space)
+            {
+                TriggerRefresh();
+                e.Handled = true;
+            }
+        }
+
+        private void TriggerRefresh()
+        {
             if (_isMoreMode && _currentItemForMore != null)
             {
                 ShowMoreForYou(_currentItemForMore, shuffle: true);
                 return;
             }
             RefreshRequested?.Invoke();
+        }
+
+        private void Refresh_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            if (RefreshButton != null)
+                RefreshButton.Background = new SolidColorBrush(Color.FromArgb(0x4D, 0x2A, 0x20, 0x24));
+        }
+
+        private void Refresh_LostKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            if (RefreshButton != null)
+                RefreshButton.Background = Brushes.Transparent;
         }
 
         public void ShowItem(MediaItem? item)

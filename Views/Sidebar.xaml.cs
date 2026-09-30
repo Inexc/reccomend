@@ -88,6 +88,7 @@ namespace MovieBookRecommender.Views
                     Margin = new Thickness(0, 2, 0, 2),
                     Padding = new Thickness(8, 8, 10, 8),
                     Cursor = Cursors.Hand,
+                    Focusable = true,
                     Background = bgBrush,
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = transformGroup
@@ -176,6 +177,11 @@ namespace MovieBookRecommender.Views
 
                 pill.MouseLeave += (_, _) =>
                 {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty,
+                        new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(110)));
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty,
+                        new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(110)));
+
                     if (_active != key)
                     {
                         bgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
@@ -186,6 +192,45 @@ namespace MovieBookRecommender.Views
                             new DoubleAnimation(0.82, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeIn });
                         translate.BeginAnimation(TranslateTransform.XProperty,
                             new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeIn });
+                    }
+                };
+
+                pill.KeyDown += (_, e) =>
+                {
+                    if (e.Key == Key.Enter || e.Key == Key.Space)
+                    {
+                        if (_active == key)
+                        {
+                            ItemReselected?.Invoke(key);
+                        }
+                        else
+                        {
+                            SetActive(key);
+                            Navigate?.Invoke(key);
+                        }
+                        e.Handled = true;
+                    }
+                };
+
+                pill.GotKeyboardFocus += (_, _) =>
+                {
+                    if (_active != key)
+                    {
+                        bgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(HoverBgColor, TimeSpan.FromMilliseconds(160)) { EasingFunction = easeOut });
+                        fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(WhiteColor, TimeSpan.FromMilliseconds(160)) { EasingFunction = easeOut });
+                    }
+                };
+
+                pill.LostKeyboardFocus += (_, _) =>
+                {
+                    if (_active != key)
+                    {
+                        bgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(Colors.Transparent, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeIn });
+                        fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                            new ColorAnimation(MutedColor, TimeSpan.FromMilliseconds(180)) { EasingFunction = easeIn });
                     }
                 };
 

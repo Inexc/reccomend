@@ -212,7 +212,8 @@ namespace MovieBookRecommender.Views
             if (btn == null) return;
             btn.Tag = isActive ? "Active" : "Normal";
             btn.Background = isActive ? accentBrush : transparent;
-            btn.Foreground = isActive ? Brushes.White : inactiveText;
+            var activeForeground = (Brush?)Application.Current?.Resources["AccentForegroundBrush"] ?? (Brush)Application.Current!.Resources["BgBrush"];
+            btn.Foreground = isActive ? activeForeground : inactiveText;
             btn.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
@@ -401,7 +402,7 @@ namespace MovieBookRecommender.Views
                         ShowAppropriateEmptyState(totalFavs, SearchBox?.Text?.Trim() ?? "");
                     }
 
-                    _app.OnFavoriteChanged(item);
+                    _app.OnFavoriteChanged(item, skipFavoritesRefresh: true);
                 };
 
                 card.BeginAnimation(UIElement.OpacityProperty, fadeOut);
@@ -537,7 +538,7 @@ namespace MovieBookRecommender.Views
                 card.FavoriteChanged += _ =>
                 {
                     Refresh();
-                    _app.OnFavoriteChanged(it);
+                    _app.OnFavoriteChanged(it, skipFavoritesRefresh: true);
                 };
 
                 RecsGrid.Children.Add(card);

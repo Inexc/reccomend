@@ -10,12 +10,13 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock x:Name="HeaderTitle" Grid.Column="0" Text="ПОДБОР ДЛЯ ВАС" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/>
-            <Border Grid.Column="1" Width="24" Height="24" CornerRadius="6" Background="Transparent" Cursor="Hand"
-                    MouseLeftButtonUp="Refresh_MouseLeftButtonUp">
+            <Border x:Name="RefreshButton" Grid.Column="1" Width="24" Height="24" CornerRadius="6" Background="Transparent" Cursor="Hand"
+                    Focusable="True" MouseLeftButtonUp="Refresh_MouseLeftButtonUp" KeyDown="Refresh_KeyDown"
+                    GotKeyboardFocus="Refresh_GotKeyboardFocus" LostKeyboardFocus="Refresh_LostKeyboardFocus">
                 <Border.ToolTip>
                     <ToolTip Content="Новая рекомендация"/>
                 </Border.ToolTip>
-                <Path Data="{StaticResource IconRefresh}" Fill="{StaticResource TextMutedBrush}" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Path x:Name="RefreshIcon" Data="{StaticResource IconRefresh}" Fill="{StaticResource TextMutedBrush}" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
         </Grid>
 

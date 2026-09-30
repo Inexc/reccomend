@@ -261,7 +261,7 @@
                                     </Border>
                                     <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                                             CornerRadius="6" Padding="7,3" Margin="0,0,6,4">
-                                        <TextBlock Text="100% Offline" FontSize="10.5" Foreground="{StaticResource Accent2Brush}"/>
+                                        <TextBlock Text="Локальные данные" FontSize="10.5" Foreground="{DynamicResource Accent2Brush}"/>
                                     </Border>
                                 </WrapPanel>
                             </StackPanel>

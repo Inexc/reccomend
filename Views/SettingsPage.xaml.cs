@@ -99,6 +99,11 @@ namespace MovieBookRecommender.Views
             var isAutoSave = AutoSaveToggle.IsChecked ?? true;
             _settingsManager.Settings.AutoSave = isAutoSave;
             _settingsManager.Save();
+            if (_data != null)
+            {
+                _data.AutoSave = isAutoSave;
+                if (isAutoSave) _data.Flush();
+            }
             _app.ShowToast("Настройки сохранены", "⚙");
         }
 

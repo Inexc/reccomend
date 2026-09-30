@@ -138,26 +138,33 @@ namespace MovieBookRecommender.Services
             }).ToList();
         }
 
+        public bool AutoSave { get; set; } = true;
+
         public bool IsFavorite(string id) => Favorites.Contains(id);
 
         public void ToggleFavorite(string id)
         {
             if (!Favorites.Remove(id))
                 Favorites.Add(id);
-            SaveFavorites();
+            if (AutoSave)
+                SaveFavorites();
         }
 
         public void RemoveFavorite(string id)
         {
             Favorites.Remove(id);
-            SaveFavorites();
+            if (AutoSave)
+                SaveFavorites();
         }
 
         public void ClearFavorites()
         {
             Favorites.Clear();
-            SaveFavorites();
+            if (AutoSave)
+                SaveFavorites();
         }
+
+        public void Flush() => SaveFavorites();
 
         public List<MediaItem> GetFavoriteItems() =>
             AllItems().Where(i => Favorites.Contains(i.Id)).ToList();
