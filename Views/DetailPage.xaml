@@ -92,11 +92,11 @@
                             <!-- Бэйдж типа и категория -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
                                 <Border x:Name="HeroKindBadgeBorder"
-                                        Background="#2D2128" BorderBrush="{StaticResource AccentBrush}"
+                                        Background="#2D2128" BorderBrush="{DynamicResource AccentBrush}"
                                         BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,10,0">
                                     <TextBlock x:Name="HeroKindBadge" Text="ФИЛЬМ"
                                                FontSize="10.5" FontFamily="Segoe UI Semibold"
-                                               Foreground="{StaticResource AccentBrush}"/>
+                                               Foreground="{DynamicResource AccentBrush}"/>
                                 </Border>
                                 <TextBlock x:Name="HeroCategoryBadge" Text="Художественный фильм"
                                            FontSize="11.5" FontFamily="Segoe UI"

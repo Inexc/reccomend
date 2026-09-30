@@ -10,7 +10,9 @@
     "year": 1949,
     "rating": 8.5,
     "description": "Мрачная антиутопия о тотальном контроле государства над мыслями и жизнью человека.",
-    "poster": "Assets/books/b1.png"
+    "poster": "Assets/books/b1.png",
+    "titleEn": "1984",
+    "isbn": "9780451524935"
   },
   {
     "id": "b2",
@@ -23,7 +25,9 @@
     "year": 1943,
     "rating": 8.4,
     "description": "Философская сказка о дружбе, любви и взрослении, рассказанная от лица маленького путешественника со звёзд.",
-    "poster": "Assets/books/b2.png"
+    "poster": "Assets/books/b2.png",
+    "titleEn": "The Little Prince",
+    "isbn": "9780156012195"
   },
   {
     "id": "b3",
@@ -36,7 +40,9 @@
     "year": 1965,
     "rating": 8.7,
     "description": "Эпическая история о борьбе за власть на пустынной планете, единственном источнике ценнейшего ресурса вселенной.",
-    "poster": "Assets/books/b3.png"
+    "poster": "Assets/books/b3.png",
+    "titleEn": "Dune",
+    "isbn": "9780441172719"
   },
   {
     "id": "b4",
@@ -48,7 +54,9 @@
     "year": 1997,
     "rating": 8.6,
     "description": "Мальчик узнаёт, что он волшебник, и отправляется в школу магии, где его ждут первые приключения и тайны.",
-    "poster": "Assets/books/b4.png"
+    "poster": "Assets/books/b4.png",
+    "titleEn": "Harry Potter and the Philosopher's Stone",
+    "isbn": "9780747532699"
   },
   {
     "id": "b5",
@@ -61,7 +69,9 @@
     "year": 1967,
     "rating": 9.3,
     "description": "Мистический роман о визите дьявола в Москву, любви и творчестве, переплетённых с библейским сюжетом.",
-    "poster": "Assets/books/b5.png"
+    "poster": "Assets/books/b5.png",
+    "titleEn": "The Master and Margarita",
+    "isbn": "9780143108276"
   },
   {
     "id": "b6",
@@ -74,7 +84,9 @@
     "year": 1866,
     "rating": 9.0,
     "description": "История студента, совершившего убийство и переживающего мучительную борьбу совести после преступления.",
-    "poster": "Assets/books/b6.png"
+    "poster": "Assets/books/b6.png",
+    "titleEn": "Crime and Punishment",
+    "isbn": "9780140449136"
   },
   {
     "id": "b7",
@@ -87,7 +99,9 @@
     "year": 1954,
     "rating": 9.0,
     "description": "Эпическое путешествие хоббита и его спутников, чтобы уничтожить кольцо, дающее власть тёмному властелину.",
-    "poster": "Assets/books/b7.png"
+    "poster": "Assets/books/b7.png",
+    "titleEn": "The Lord of the Rings",
+    "isbn": "9780618640157"
   },
   {
     "id": "b8",
@@ -100,7 +114,9 @@
     "year": 1957,
     "rating": 7.9,
     "description": "Философский роман о предпринимателях, которые отказываются поддерживать мир, эксплуатирующий их труд.",
-    "poster": "Assets/books/b8.png"
+    "poster": "Assets/books/b8.png",
+    "titleEn": "Atlas Shrugged",
+    "isbn": "9780451191144"
   },
   {
     "id": "b9",
@@ -112,7 +128,9 @@
     "year": 1936,
     "rating": 8.8,
     "description": "История дружбы и любви троих друзей на фоне тяжёлого времени Германии между двумя войнами.",
-    "poster": "Assets/books/b9.png"
+    "poster": "Assets/books/b9.png",
+    "titleEn": "Three Comrades",
+    "isbn": "9780449912423"
   },
   {
     "id": "b10",
@@ -125,6 +143,8 @@
     "year": 1986,
     "rating": 8.6,
     "description": "Группа друзей детства снова объединяется, чтобы победить древнее зло, терроризирующее их родной город.",
-    "poster": "Assets/books/b10.png"
+    "poster": "Assets/books/b10.png",
+    "titleEn": "It",
+    "isbn": "9781501142970"
   }
 ]

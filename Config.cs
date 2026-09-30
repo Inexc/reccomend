@@ -21,5 +21,8 @@ namespace MovieBookRecommender
         /// <summary>Если false — оба онлайн-источника отключены,
         /// всегда используются сгенерированные заглушки.</summary>
         public static readonly bool UseOnlinePosters = true;
+
+        /// <summary>Включает подробное логирование в poster_errors.log.</summary>
+        public static readonly bool Debug = false;
     }
 }

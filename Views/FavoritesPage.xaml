@@ -103,7 +103,7 @@
                         <Border Style="{StaticResource StatPillBorder}" Margin="0,0,8,0">
                             <StackPanel VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
-                                    <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource AccentBrush}" Margin="0,0,6,0"/>
+                                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource AccentBrush}" Margin="0,0,6,0"/>
                                     <TextBlock Text="ФИЛЬМЫ" Style="{StaticResource Eyebrow}" FontSize="9.5" Foreground="{StaticResource TextMutedBrush}"/>
                                 </StackPanel>
                                 <TextBlock x:Name="MoviesCountText" Text="0" FontSize="20" FontFamily="Segoe UI Bold"
@@ -279,7 +279,7 @@
                     <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource BgBrush}"
                             BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
                             HorizontalAlignment="Center" Margin="0,0,0,16">
-                        <Path x:Name="EmptyStateIcon" Data="{StaticResource IconHeart}" Fill="{StaticResource AccentBrush}"
+                        <Path x:Name="EmptyStateIcon" Data="{StaticResource IconHeart}" Fill="{DynamicResource AccentBrush}"
                               Width="26" Height="26" Stretch="Uniform"
                               HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85"/>
                     </Border>

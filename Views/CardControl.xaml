@@ -41,7 +41,7 @@
                             <Border.Effect>
                                 <DropShadowEffect Color="#000000" BlurRadius="10" ShadowDepth="2" Opacity="0.35" RenderingBias="Performance"/>
                             </Border.Effect>
-                            <Path x:Name="FallbackIcon" Data="{StaticResource IconFilm}" Fill="{StaticResource AccentBrush}"
+                            <Path x:Name="FallbackIcon" Data="{StaticResource IconFilm}" Fill="{DynamicResource AccentBrush}"
                                   Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <TextBlock x:Name="FallbackKindText" Text="ФИЛЬМ" FontSize="10" FontFamily="Segoe UI Semibold"
@@ -110,7 +110,7 @@
 
                 <!-- 7. Рамка выделения (Selected State) -->
                 <Border x:Name="SelectedBorder" CornerRadius="12" BorderThickness="2"
-                        BorderBrush="{StaticResource AccentBrush}" Visibility="Collapsed" IsHitTestVisible="False"/>
+                        BorderBrush="{DynamicResource AccentBrush}" Visibility="Collapsed" IsHitTestVisible="False"/>
             </Grid>
         </Border>
     </Border>

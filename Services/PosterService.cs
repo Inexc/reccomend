@@ -13,17 +13,18 @@ namespace MovieBookRecommender.Services
 {
     /// <summary>
     /// Загружает настоящие постеры фильмов (TMDb) и обложки книг (Open Library),
-    /// либо — если ключа/сети/результата нет — рисует цветную заглушку с первой
-    /// буквой и названием (аналог utils/data_manager.py::_generate_placeholder
-    /// из Python-версии, только средствами WPF вместо Pillow).
-    ///
-    /// Любая сетевая ошибка перехватывается: программа никогда не падает
-    /// из-за отсутствия интернета или ключа — просто используется заглушка.
+    /// либо — если ключа/сети/результата нет — генерирует стильную обложку-заглушку.
+    /// Файлы сохраняются в LocalAppData, скачивание происходит во временный файл
+    /// с проверкой декодированием перед сохранением.
     /// </summary>
     public static class PosterService
     {
         private const int PosterW = 300;
         private const int PosterH = 440;
+
+        public static readonly string UserDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MovieBookRecommender");
 
         private static readonly HttpClient Http = new()
         {
@@ -38,6 +39,35 @@ namespace MovieBookRecommender.Services
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, ImageSource> ImageCache = new();
 
         /// <summary>
+        /// Разрешает существующий файл постера: сначала в UserData, затем в BaseDirectory.
+        /// Проверяет как исходное расширение, так и альтернативное (.png/.jpg).
+        /// </summary>
+        public static string? ResolveExistingPosterPath(MediaItem item)
+        {
+            if (string.IsNullOrWhiteSpace(item.Poster)) return null;
+
+            string rel = item.Poster;
+            string ext = Path.GetExtension(rel);
+            string altExt = ext.Equals(".png", StringComparison.OrdinalIgnoreCase)
+                ? Path.ChangeExtension(rel, ".jpg")
+                : Path.ChangeExtension(rel, ".png");
+
+            string[] candidates = {
+                Path.Combine(UserDataDir, rel),
+                Path.Combine(UserDataDir, altExt),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rel),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, altExt),
+            };
+
+            foreach (var c in candidates)
+            {
+                if (File.Exists(c))
+                    return c;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Возвращает кэшированное изображение постера. Декодируется из файла ровно один раз
         /// и замораживается (Freeze) для максимальной производительности интерфейса.
         /// </summary>
@@ -49,12 +79,17 @@ namespace MovieBookRecommender.Services
             if (ImageCache.TryGetValue(item.Poster, out var cached))
                 return cached;
 
-            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.Poster);
-            if (!File.Exists(fullPath))
+            var fullPath = ResolveExistingPosterPath(item);
+            if (fullPath == null)
             {
                 try
                 {
-                    GeneratePlaceholder(item, fullPath);
+                    var defaultPath = Path.Combine(UserDataDir, item.Poster);
+                    var dir = Path.GetDirectoryName(defaultPath);
+                    if (!string.IsNullOrEmpty(dir))
+                        Directory.CreateDirectory(dir);
+                    GeneratePlaceholder(item, defaultPath);
+                    fullPath = defaultPath;
                 }
                 catch
                 {
@@ -62,7 +97,7 @@ namespace MovieBookRecommender.Services
                 }
             }
 
-            if (File.Exists(fullPath))
+            if (fullPath != null && File.Exists(fullPath))
             {
                 try
                 {
@@ -88,65 +123,154 @@ namespace MovieBookRecommender.Services
         /// <summary>Очистка кэша изображений при необходимости.</summary>
         public static void ClearCache() => ImageCache.Clear();
 
-        /// <summary>Гарантирует, что у элемента есть файл постера на диске
-        /// (скачивает при возможности, иначе генерирует заглушку).</summary>
+        /// <summary>
+        /// Гарантирует, что у элемента есть файл постера на диске
+        /// (скачивает при возможности, иначе генерирует заглушку).
+        /// Безопасно завёрнут в try/catch.
+        /// </summary>
         public static async Task EnsurePosterAsync(MediaItem item)
-        {
-            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.Poster);
-            if (File.Exists(fullPath))
-                return;
-
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-
-            var fetched = false;
-            if (AppConfig.UseOnlinePosters)
-            {
-                try
-                {
-                    fetched = item.Kind == MediaKind.Movie
-                        ? await FetchMoviePosterAsync(item, fullPath)
-                        : await FetchBookCoverAsync(item, fullPath);
-                }
-                catch (Exception ex)
-                {
-                    fetched = false; // сеть недоступна и т.п. — не критично
-                    LogError(item, ex);
-                }
-            }
-
-            if (!fetched)
-                GeneratePlaceholder(item, fullPath);
-        }
-
-        /// <summary>Временный диагностический лог — пишет причину неудачи
-        /// в poster_errors.log рядом с exe, чтобы можно было понять,
-        /// почему не скачался постер (сеть, ключ, антивирус и т.п.).</summary>
-        private static void LogError(MediaItem item, Exception ex)
         {
             try
             {
-                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "poster_errors.log");
-                var line = $"[{DateTime.Now:HH:mm:ss}] {item.Title} ({item.Kind}): {ex.GetType().Name}: {ex.Message}{Environment.NewLine}";
-                File.AppendAllText(logPath, line);
+                var existing = ResolveExistingPosterPath(item);
+                if (existing != null)
+                    return;
+
+                var targetPath = Path.Combine(UserDataDir, item.Poster);
+                var dir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+
+                var fetched = false;
+                if (AppConfig.UseOnlinePosters)
+                {
+                    try
+                    {
+                        fetched = item.Kind == MediaKind.Movie
+                            ? await FetchMoviePosterAsync(item, targetPath)
+                            : await FetchBookCoverAsync(item, targetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        fetched = false;
+                        LogError(item, ex);
+                    }
+                }
+
+                if (!fetched)
+                {
+                    try
+                    {
+                        GeneratePlaceholder(item, targetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(item, ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(item, ex);
+            }
+        }
+
+        /// <summary>
+        /// Скачивает файл во временный .tmp файл, проверяет валидность декодированием
+        /// через BitmapDecoder, и лишь затем атомарно перемещает в целевой файл
+        /// с корректным расширением (JPEG -> .jpg).
+        /// </summary>
+        private static async Task<bool> DownloadAndVerifyImageAsync(string url, string destPath)
+        {
+            var tempPath = Path.Combine(UserDataDir, "temp_" + Guid.NewGuid().ToString("N") + ".tmp");
+            try
+            {
+                var tempDir = Path.GetDirectoryName(tempPath);
+                if (!string.IsNullOrEmpty(tempDir))
+                    Directory.CreateDirectory(tempDir);
+
+                using var response = await Http.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                    return false;
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                if (bytes == null || bytes.Length < 32)
+                    return false;
+
+                await File.WriteAllBytesAsync(tempPath, bytes);
+
+                // Проверяем валидность файла декодированием через BitmapDecoder
+                bool isValid = false;
+                bool isJpeg = bytes.Length > 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
+                using (var stream = File.OpenRead(tempPath))
+                {
+                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.None);
+                    if (decoder.Frames.Count > 0 && decoder.Frames[0].PixelWidth > 1 && decoder.Frames[0].PixelHeight > 1)
+                    {
+                        isValid = true;
+                    }
+                }
+
+                if (!isValid)
+                {
+                    if (File.Exists(tempPath)) File.Delete(tempPath);
+                    return false;
+                }
+
+                // Если это JPEG — сохраняем с расширением .jpg
+                var finalPath = isJpeg ? Path.ChangeExtension(destPath, ".jpg") : destPath;
+                var destDir = Path.GetDirectoryName(finalPath);
+                if (!string.IsNullOrEmpty(destDir))
+                    Directory.CreateDirectory(destDir);
+
+                if (File.Exists(finalPath))
+                    File.Delete(finalPath);
+
+                File.Move(tempPath, finalPath);
+                return true;
             }
             catch
             {
-                // логирование не должно ронять приложение
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                }
+                return false;
             }
+        }
+
+        private static void LogError(MediaItem item, Exception ex)
+        {
+            if (!AppConfig.Debug) return;
+            try
+            {
+                var logPath = Path.Combine(UserDataDir, "poster_errors.log");
+                Directory.CreateDirectory(UserDataDir);
+                if (File.Exists(logPath) && new FileInfo(logPath).Length > 100 * 1024)
+                {
+                    File.Delete(logPath);
+                }
+                var line = $"[{DateTime.Now:HH:mm:ss}] {item.Title} ({item.Kind}): {ex.GetType().Name}: {ex.Message}{Environment.NewLine}";
+                File.AppendAllText(logPath, line);
+            }
+            catch { }
         }
 
         private static void LogInfo(MediaItem item, string message)
         {
+            if (!AppConfig.Debug) return;
             try
             {
-                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "poster_errors.log");
+                var logPath = Path.Combine(UserDataDir, "poster_errors.log");
+                Directory.CreateDirectory(UserDataDir);
+                if (File.Exists(logPath) && new FileInfo(logPath).Length > 100 * 1024)
+                {
+                    File.Delete(logPath);
+                }
                 var line = $"[{DateTime.Now:HH:mm:ss}] {item.Title} ({item.Kind}): {message}{Environment.NewLine}";
                 File.AppendAllText(logPath, line);
             }
-            catch
-            {
-                // логирование не должно ронять приложение
-            }
+            catch { }
         }
 
         // ------------------------------------------------------------------
@@ -189,53 +313,82 @@ namespace MovieBookRecommender.Services
             }
 
             var posterUrl = "https://image.tmdb.org/t/p/w500" + posterPathEl.GetString();
-            var bytes = await Http.GetByteArrayAsync(posterUrl);
-            await File.WriteAllBytesAsync(destPath, bytes);
-            LogInfo(item, "OK: постер скачан с TMDb");
-            return true;
+            bool ok = await DownloadAndVerifyImageAsync(posterUrl, destPath);
+            if (ok)
+                LogInfo(item, "OK: постер скачан с TMDb");
+            return ok;
         }
 
         // ------------------------------------------------------------------
-        // Open Library — обложки книг (ключ не требуется)
+        // Open Library — обложки книг (поиск по ISBN, затем по TitleEn + Author)
         // ------------------------------------------------------------------
         private static async Task<bool> FetchBookCoverAsync(MediaItem item, string destPath)
         {
-            var title = Uri.EscapeDataString(item.Title);
-            var url = $"https://openlibrary.org/search.json?title={title}&limit=5";
-
-            var json = await Http.GetStringAsync(url);
-            using var doc = JsonDocument.Parse(json);
-
-            if (!doc.RootElement.TryGetProperty("docs", out var docs) || docs.GetArrayLength() == 0)
+            // 1. Приоритетный поиск по ISBN через Covers API Open Library
+            if (!string.IsNullOrWhiteSpace(item.Isbn))
             {
-                LogInfo(item, "OpenLibrary: книга не найдена");
-                return false;
-            }
-
-            long? coverId = null;
-            foreach (var d in docs.EnumerateArray())
-            {
-                if (d.TryGetProperty("cover_i", out var c) && c.ValueKind == JsonValueKind.Number)
+                var cleanIsbn = item.Isbn.Trim();
+                var isbnUrl = $"https://covers.openlibrary.org/b/isbn/{cleanIsbn}-L.jpg?default=false";
+                try
                 {
-                    coverId = c.GetInt64();
-                    break;
+                    if (await DownloadAndVerifyImageAsync(isbnUrl, destPath))
+                    {
+                        LogInfo(item, "OK: обложка скачана по ISBN с Open Library");
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogInfo(item, $"OpenLibrary ISBN: {ex.Message}");
                 }
             }
-            if (coverId is null)
+
+            // 2. Поиск по каталогу Open Library (по названию на английском или русском + автору)
+            var searchTitle = !string.IsNullOrWhiteSpace(item.TitleEn) ? item.TitleEn : item.Title;
+            var query = Uri.EscapeDataString(searchTitle);
+            var authorParam = !string.IsNullOrWhiteSpace(item.Author) ? "&author=" + Uri.EscapeDataString(item.Author) : "";
+            var searchUrl = $"https://openlibrary.org/search.json?title={query}{authorParam}&limit=5";
+
+            try
             {
-                LogInfo(item, "OpenLibrary: у найденных изданий нет обложки (cover_i)");
-                return false;
+                var json = await Http.GetStringAsync(searchUrl);
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("docs", out var docs) && docs.GetArrayLength() > 0)
+                {
+                    long? coverId = null;
+                    foreach (var d in docs.EnumerateArray())
+                    {
+                        if (d.TryGetProperty("cover_i", out var c) && c.ValueKind == JsonValueKind.Number)
+                        {
+                            coverId = c.GetInt64();
+                            break;
+                        }
+                    }
+
+                    if (coverId != null)
+                    {
+                        var coverUrl = $"https://covers.openlibrary.org/b/id/{coverId}-L.jpg";
+                        if (await DownloadAndVerifyImageAsync(coverUrl, destPath))
+                        {
+                            LogInfo(item, "OK: обложка скачана по cover_i с Open Library");
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogInfo(item, $"OpenLibrary search: {ex.Message}");
             }
 
-            var coverUrl = $"https://covers.openlibrary.org/b/id/{coverId}-L.jpg";
-            var bytes = await Http.GetByteArrayAsync(coverUrl);
-            await File.WriteAllBytesAsync(destPath, bytes);
-            LogInfo(item, "OK: обложка скачана с Open Library");
-            return true;
+            LogInfo(item, "OpenLibrary: обложка не найдена, используется стилизованная заглушка");
+            return false;
         }
 
         // ------------------------------------------------------------------
-        // Заглушка: спокойный тональный градиент в фирменной палитре + буква
+        // Заглушка: спокойный тональный градиент в фирменной палитре
+        // Для книг — крупное читаемое название и автор, для фильмов — монограмма
         // ------------------------------------------------------------------
         private static void GeneratePlaceholder(MediaItem item, string destPath)
         {
@@ -248,16 +401,61 @@ namespace MovieBookRecommender.Services
                 var brush = new LinearGradientBrush(top, bottom, 90);
                 dc.DrawRectangle(brush, null, rect);
 
-                // Одна крупная, но приглушённая буква по центру — без дублирования
-                // названия (оно и так отображается поверх карточки в самом приложении).
-                var letter = string.IsNullOrWhiteSpace(item.Title) ? "?" : item.Title.Trim()[0].ToString().ToUpper();
-                var letterBrush = new SolidColorBrush(Color.FromArgb(70, 242, 233, 228)); // TextBrush при низкой непрозрачности
-                var letterText = new FormattedText(
-                    letter, System.Globalization.CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    new Typeface("Segoe UI Semibold"), 68, letterBrush,
-                    VisualTreeHelper.GetDpi(visual).PixelsPerDip);
-                dc.DrawText(letterText, new Point((PosterW - letterText.Width) / 2, (PosterH - letterText.Height) / 2));
+                if (item.Kind == MediaKind.Book)
+                {
+                    // Декоративная рамка для обложки книги
+                    var borderPen = new Pen(new SolidColorBrush(Color.FromArgb(40, 242, 233, 228)), 1.5);
+                    dc.DrawRectangle(null, borderPen, new Rect(16, 16, PosterW - 32, PosterH - 32));
+
+                    // Крупное название книги
+                    var titleBrush = new SolidColorBrush(Color.FromArgb(235, 242, 233, 228));
+                    var titleText = new FormattedText(
+                        item.Title,
+                        System.Globalization.CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface(new FontFamily("Georgia, Times New Roman, Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                        22,
+                        titleBrush,
+                        VisualTreeHelper.GetDpi(visual).PixelsPerDip)
+                    {
+                        MaxTextWidth = PosterW - 48,
+                        MaxTextHeight = PosterH / 2,
+                        TextAlignment = TextAlignment.Center
+                    };
+                    dc.DrawText(titleText, new Point(24, PosterH * 0.30));
+
+                    // Автор книги
+                    if (!string.IsNullOrWhiteSpace(item.Author))
+                    {
+                        var authorBrush = new SolidColorBrush(Color.FromArgb(180, 242, 233, 228));
+                        var authorText = new FormattedText(
+                            item.Author,
+                            System.Globalization.CultureInfo.CurrentCulture,
+                            FlowDirection.LeftToRight,
+                            new Typeface(new FontFamily("Segoe UI"), FontStyles.Italic, FontWeights.Normal, FontStretches.Normal),
+                            15,
+                            authorBrush,
+                            VisualTreeHelper.GetDpi(visual).PixelsPerDip)
+                        {
+                            MaxTextWidth = PosterW - 48,
+                            MaxTextHeight = 60,
+                            TextAlignment = TextAlignment.Center
+                        };
+                        dc.DrawText(authorText, new Point(24, PosterH * 0.65));
+                    }
+                }
+                else
+                {
+                    // Для фильмов: центрированная монограмма
+                    var letter = string.IsNullOrWhiteSpace(item.Title) ? "?" : item.Title.Trim()[0].ToString().ToUpper();
+                    var letterBrush = new SolidColorBrush(Color.FromArgb(70, 242, 233, 228));
+                    var letterText = new FormattedText(
+                        letter, System.Globalization.CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface("Segoe UI Semibold"), 68, letterBrush,
+                        VisualTreeHelper.GetDpi(visual).PixelsPerDip);
+                    dc.DrawText(letterText, new Point((PosterW - letterText.Width) / 2, (PosterH - letterText.Height) / 2));
+                }
             }
 
             var bmp = new RenderTargetBitmap(PosterW, PosterH, 96, 96, PixelFormats.Pbgra32);
@@ -265,15 +463,22 @@ namespace MovieBookRecommender.Services
 
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bmp));
+            var dir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
             using var stream = File.Create(destPath);
             encoder.Save(stream);
         }
 
         private static (Color top, Color bottom) ColorFor(string text)
         {
-            // Всегда в рамках фирменной палитры (карточка #221A1E) — лишь лёгкий
-            // тональный разброс между произведениями, без ярких/разноцветных оттенков.
-            var seed = Math.Abs(text.GetHashCode()) % 3;
+            uint hash = 2166136261u;
+            for (int i = 0; i < text.Length; i++)
+            {
+                hash ^= text[i];
+                hash *= 16777619u;
+            }
+            var seed = hash % 3;
             return seed switch
             {
                 0 => (Color.FromRgb(0x2E, 0x23, 0x27), Color.FromRgb(0x22, 0x1A, 0x1E)),

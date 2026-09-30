@@ -35,6 +35,12 @@ namespace MovieBookRecommender.Models
         [JsonPropertyName("poster")]
         public string Poster { get; set; } = "";
 
+        [JsonPropertyName("titleEn")]
+        public string? TitleEn { get; set; }
+
+        [JsonPropertyName("isbn")]
+        public string? Isbn { get; set; }
+
         /// <summary>Не сериализуется — тип проставляется программно после загрузки.</summary>
         [JsonIgnore]
         public MediaKind Kind { get; set; }

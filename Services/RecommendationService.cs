@@ -257,10 +257,21 @@ namespace MovieBookRecommender.Services
             // 5. Небольшое разнообразие (Requirement 5)
             // Детерминированный псевдо-джиттер от 0.0 до 1.5, зависящий от ID и VarietyOffset,
             // чтобы среди кандидатов с одинаково высокими оценками не выпадал один и тот же порядок
-            int jitterHash = Math.Abs((c.Id.GetHashCode() ^ (options.VarietyOffset * 397))) % 100;
+            uint jitterHash = (ComputeFnv1a(c.Id) ^ ((uint)options.VarietyOffset * 16777619u)) % 100u;
             score += (jitterHash / 100.0) * 1.5;
 
             return score;
+        }
+
+        private static uint ComputeFnv1a(string text)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < text.Length; i++)
+            {
+                hash ^= text[i];
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         /// <summary>

@@ -55,36 +55,45 @@ namespace MovieBookRecommender
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            _data.Load();
-            _settings.Load();
+            try
+            {
+                _data.Load();
+                _settings.Load();
 
-            // Восстановление размеров и состояния окна из сохранённых настроек
-            if (_settings.Settings.WindowWidth >= MinWidth)
-                Width = _settings.Settings.WindowWidth;
-            if (_settings.Settings.WindowHeight >= MinHeight)
-                Height = _settings.Settings.WindowHeight;
-            if (_settings.Settings.IsMaximized)
-                WindowState = WindowState.Maximized;
+                // Восстановление размеров и состояния окна из сохранённых настроек
+                if (_settings.Settings.WindowWidth >= MinWidth)
+                    Width = _settings.Settings.WindowWidth;
+                if (_settings.Settings.WindowHeight >= MinHeight)
+                    Height = _settings.Settings.WindowHeight;
+                if (_settings.Settings.IsMaximized)
+                    WindowState = WindowState.Maximized;
 
-            ApplyTheme(_settings.Settings.Theme, save: false);
-            ApplyScale(_settings.Settings.Scale, save: false);
+                ApplyTheme(_settings.Settings.Theme, save: false);
+                ApplyScale(_settings.Settings.Scale, save: false);
 
-            LoadingOverlay.Visibility = Visibility.Visible;
-            await EnsureAllPostersAsync();
-            LoadingOverlay.Visibility = Visibility.Collapsed;
+                LoadingOverlay.Visibility = Visibility.Visible;
+                await EnsureAllPostersAsync();
+                LoadingOverlay.Visibility = Visibility.Collapsed;
 
-            SidebarControl.ItemReselected += SidebarControl_ItemReselected;
-            PreviewKeyDown += MainWindow_PreviewKeyDown;
-            PreviewMouseDown += MainWindow_PreviewMouseDown;
+                SidebarControl.ItemReselected += SidebarControl_ItemReselected;
+                PreviewKeyDown += MainWindow_PreviewKeyDown;
+                PreviewMouseDown += MainWindow_PreviewMouseDown;
 
-            DetailsPanelControl.Initialize(_data);
-            DetailsPanelControl.OpenRequested += OpenItem;
-            DetailsPanelControl.RefreshRequested += ShowFeaturedDefault;
+                DetailsPanelControl.Initialize(_data);
+                DetailsPanelControl.OpenRequested += OpenItem;
+                DetailsPanelControl.RefreshRequested += () => ShowFeaturedDefault(shuffle: true);
+                DetailsPanelControl.FavoriteChanged += item => OnFavoriteChanged(item);
 
-            ShowFeaturedDefault();
-            ShowPage("home");
+                ShowFeaturedDefault(shuffle: false);
+                ShowPage("home");
 
-            SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
+                SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
+            }
+            catch (Exception ex)
+            {
+                LoadingOverlay.Visibility = Visibility.Collapsed;
+                System.Diagnostics.Debug.WriteLine($"[MainWindow_Loaded error]: {ex}");
+            }
         }
 
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -144,13 +153,27 @@ namespace MovieBookRecommender
         /// при первом запуске (дальше файлы уже лежат на диске).</summary>
         private async Task EnsureAllPostersAsync()
         {
-            var tasks = _data.AllItems().Select(PosterService.EnsurePosterAsync);
+            var tasks = _data.AllItems().Select(async item =>
+            {
+                try
+                {
+                    await PosterService.EnsurePosterAsync(item);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[EnsurePosterAsync error for {item.Id}]: {ex.Message}");
+                }
+            });
             await Task.WhenAll(tasks);
         }
 
-        private void ShowFeaturedDefault()
+        private int _featuredVariety = 0;
+
+        private void ShowFeaturedDefault(bool shuffle = false)
         {
-            var featured = RecommendationService.PickFeatured(_data.AllItems(), _data.Favorites);
+            if (shuffle)
+                _featuredVariety++;
+            var featured = RecommendationService.PickFeatured(_data.AllItems(), _data.Favorites, _featuredVariety);
             DetailsPanelControl.ShowItem(featured);
         }
 
@@ -158,7 +181,7 @@ namespace MovieBookRecommender
         {
             _currentDetailItem = null;
             ShowPage(key, clearHistory: false);
-            ShowFeaturedDefault();
+            ShowFeaturedDefault(shuffle: false);
         }
 
         private void SidebarControl_ItemReselected(string key)
@@ -460,6 +483,7 @@ namespace MovieBookRecommender
         /// </summary>
         public void ShowDetailPage(MediaItem item, bool isBackNavigation = false, double savedScrollOffset = 0, string fromSection = "")
         {
+            bool isSamePage = _currentVisiblePage is DetailPage;
             _currentDetailItem = item;
 
             if (!_pages.TryGetValue("detail", out var page) || page is not DetailPage detailPage)
@@ -469,13 +493,17 @@ namespace MovieBookRecommender
             }
 
             detailPage.Initialize(item, _data, this, fromSection);
+            detailPage.RestoreScrollOffset(savedScrollOffset);
 
-            if (savedScrollOffset > 0)
+            if (isSamePage)
             {
-                detailPage.RestoreScrollOffset(savedScrollOffset);
+                var fadeIn = new DoubleAnimation(0.2, 1.0, TimeSpan.FromMilliseconds(160));
+                detailPage.BeginAnimation(UIElement.OpacityProperty, fadeIn);
             }
-
-            TransitionToPage(detailPage, "detail");
+            else
+            {
+                TransitionToPage(detailPage, "detail");
+            }
 
             // Подсвечиваем в боковом меню раздел (Фильмы или Книги)
             SidebarControl.SetActive(item.Kind == MediaKind.Movie ? "movies" : "books");
@@ -521,7 +549,7 @@ namespace MovieBookRecommender
             if (_currentPageKey == "favorites")
                 RefreshCurrentPage();
             else if (_currentPageKey == "home" && _pages.TryGetValue("home", out var page) && page is HomePage hp)
-                hp.RefreshData();
+                hp.UpdateCardsFavoriteState();
             else if (_currentPageKey == "detail" && _pages.TryGetValue("detail", out var dPage) && dPage is DetailPage dp)
                 dp.RefreshData();
             else if (_currentPageKey == "settings" && _pages.TryGetValue("settings", out var sPage) && sPage is SettingsPage sp)
@@ -597,6 +625,14 @@ namespace MovieBookRecommender
             gradient.GradientStops.Add(new GradientStop(accentColor, 0));
             gradient.GradientStops.Add(new GradientStop(pressedColor, 1));
             Application.Current.Resources["AccentGradient"] = gradient;
+
+            Application.Current.Resources["AccentGlow"] = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = accentColor,
+                BlurRadius = 18,
+                ShadowDepth = 0,
+                Opacity = 0.55
+            };
 
             SidebarControl?.SetActive(_currentPageKey);
             SidebarControl?.UpdateFavoritesBadge(_data.Favorites.Count);

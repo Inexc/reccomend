@@ -34,8 +34,8 @@ namespace MovieBookRecommender.Views
 
         private static readonly Color RestColor = Color.FromArgb(0xDD, 0x16, 0x11, 0x14);
         private static readonly Color RestHoverColor = Color.FromArgb(0xF5, 0x22, 0x1A, 0x1E);
-        private static readonly Color FavColor = Color.FromRgb(0xC1, 0x66, 0x6B);
-        private static readonly Color FavHoverColor = Color.FromRgb(0xCD, 0x7A, 0x7F);
+        private static Color FavColor => Application.Current?.Resources["AccentBrush"] is SolidColorBrush b ? b.Color : Color.FromRgb(0xC1, 0x66, 0x6B);
+        private static Color FavHoverColor => Application.Current?.Resources["AccentHoverBrush"] is SolidColorBrush b ? b.Color : Color.FromRgb(0xCD, 0x7A, 0x7F);
 
         private static readonly Color BorderNormalColor = Color.FromRgb(0x2D, 0x23, 0x28);
         private static readonly Color BorderHoverColor = Color.FromRgb(0x56, 0x3F, 0x4E);

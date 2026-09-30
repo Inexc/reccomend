@@ -18,7 +18,11 @@ namespace MovieBookRecommender.Services
         private static readonly string DataDir = Path.Combine(BaseDir, "Data");
         private static readonly string MoviesFile = Path.Combine(DataDir, "movies.json");
         private static readonly string BooksFile = Path.Combine(DataDir, "books.json");
-        private static readonly string FavoritesFile = Path.Combine(DataDir, "favorites.json");
+        private static readonly string LegacyFavoritesFile = Path.Combine(DataDir, "favorites.json");
+        public static readonly string UserDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MovieBookRecommender");
+        private static readonly string FavoritesFile = Path.Combine(UserDataDir, "favorites.json");
 
         public List<MediaItem> Movies { get; private set; } = new();
         public List<MediaItem> Books { get; private set; } = new();
@@ -57,10 +61,17 @@ namespace MovieBookRecommender.Services
 
         private static HashSet<string> LoadFavorites()
         {
-            if (!File.Exists(FavoritesFile))
-                return new HashSet<string>();
             try
             {
+                Directory.CreateDirectory(UserDataDir);
+                if (!File.Exists(FavoritesFile) && File.Exists(LegacyFavoritesFile))
+                {
+                    try { File.Copy(LegacyFavoritesFile, FavoritesFile, overwrite: true); } catch { }
+                }
+
+                if (!File.Exists(FavoritesFile))
+                    return new HashSet<string>();
+
                 var json = File.ReadAllText(FavoritesFile);
                 var ids = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
                 return new HashSet<string>(ids);
@@ -75,7 +86,7 @@ namespace MovieBookRecommender.Services
         {
             try
             {
-                Directory.CreateDirectory(DataDir);
+                Directory.CreateDirectory(UserDataDir);
                 var json = JsonSerializer.Serialize(Favorites.OrderBy(x => x).ToList(), JsonOptions);
                 File.WriteAllText(FavoritesFile, json);
             }

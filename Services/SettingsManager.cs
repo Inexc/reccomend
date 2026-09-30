@@ -7,7 +7,11 @@ namespace MovieBookRecommender.Services
 {
     public class SettingsManager
     {
-        private static readonly string SettingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "settings.json");
+        private static readonly string LegacySettingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "settings.json");
+        public static readonly string UserDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MovieBookRecommender");
+        private static readonly string SettingsFile = Path.Combine(UserDataDir, "settings.json");
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
         public AppSettings Settings { get; private set; } = new();
@@ -16,6 +20,12 @@ namespace MovieBookRecommender.Services
         {
             try
             {
+                Directory.CreateDirectory(UserDataDir);
+                if (!File.Exists(SettingsFile) && File.Exists(LegacySettingsFile))
+                {
+                    try { File.Copy(LegacySettingsFile, SettingsFile, overwrite: true); } catch { }
+                }
+
                 if (File.Exists(SettingsFile))
                 {
                     var json = File.ReadAllText(SettingsFile);
