@@ -76,11 +76,22 @@ namespace MovieBookRecommender.Services
             if (options.KindFilter.HasValue)
                 candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
 
-            // Если кандидатов меньше требуемого, снимаем строгое ограничение по избранному (кроме seed)
+            // Если кандидатов меньше требуемого, снимаем строгое ограничение по избранному (кроме seed и ExcludeIds)
             if (candidates.Count == 0)
             {
+                var hardExclude = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (options.ExcludeIds != null)
+                {
+                    foreach (var id in options.ExcludeIds)
+                    {
+                        if (!string.IsNullOrWhiteSpace(id)) hardExclude.Add(id);
+                    }
+                }
+                if (options.SeedItem != null)
+                    hardExclude.Add(options.SeedItem.Id);
+
                 candidates = poolList
-                    .Where(i => options.SeedItem == null || !string.Equals(i.Id, options.SeedItem.Id, StringComparison.OrdinalIgnoreCase))
+                    .Where(i => !hardExclude.Contains(i.Id))
                     .ToList();
                 if (options.KindFilter.HasValue)
                     candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
@@ -154,10 +165,22 @@ namespace MovieBookRecommender.Services
                 {
                     foreach (var fid in options.FavoriteIds) addedIds.Add(fid);
                 }
+                if (options.ExcludeIds != null)
+                {
+                    foreach (var eid in options.ExcludeIds)
+                    {
+                        if (!string.IsNullOrWhiteSpace(eid)) addedIds.Add(eid);
+                    }
+                }
 
                 // Дополняем кандидатами того же типа (если есть предпочтение)
-                var fallbackPool = poolList
-                    .Where(i => !addedIds.Contains(i.Id))
+                var fallbackQuery = poolList.Where(i => !addedIds.Contains(i.Id));
+                if (options.KindFilter.HasValue)
+                {
+                    fallbackQuery = fallbackQuery.Where(i => i.Kind == options.KindFilter.Value);
+                }
+
+                var fallbackPool = fallbackQuery
                     .OrderByDescending(i => i.Rating)
                     .ToList();
 
@@ -220,13 +243,13 @@ namespace MovieBookRecommender.Services
             // 3. Вкус пользователя на основе Избранного
             if (totalFavCount > 0)
             {
-                // Совпадение жанров кандидата с профилем избранного
+                // Совпадение жанров кандидата с профилем избранного (нормируем на количество избранного)
                 double userGenreScore = 0.0;
                 foreach (var g in c.Genre)
                 {
                     if (userGenreWeights.TryGetValue(g, out var gw))
                     {
-                        userGenreScore += gw * 4.5;
+                        userGenreScore += (gw / totalFavCount) * 5.0;
                     }
                 }
 
@@ -323,6 +346,9 @@ namespace MovieBookRecommender.Services
             var books = list.Where(i => i.Kind == MediaKind.Book).ToList();
 
             var result = new List<MediaItem>();
+            var authorCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var deferred = new List<MediaItem>();
+
             int m = 0, b = 0;
 
             // Начинаем с того типа, у которого выше рейтинг первого элемента
@@ -330,28 +356,53 @@ namespace MovieBookRecommender.Services
 
             while (result.Count < count && (m < movies.Count || b < books.Count))
             {
+                MediaItem? candidate = null;
+
                 if (takeMovie && m < movies.Count)
                 {
-                    result.Add(movies[m++]);
+                    candidate = movies[m++];
                     if (b < books.Count) takeMovie = false;
                 }
                 else if (!takeMovie && b < books.Count)
                 {
-                    result.Add(books[b++]);
+                    candidate = books[b++];
                     if (m < movies.Count) takeMovie = true;
                 }
                 else if (m < movies.Count)
                 {
-                    result.Add(movies[m++]);
+                    candidate = movies[m++];
                 }
                 else if (b < books.Count)
                 {
-                    result.Add(books[b++]);
+                    candidate = books[b++];
                 }
                 else
                 {
                     break;
                 }
+
+                if (candidate != null)
+                {
+                    var author = candidate.Author?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(author))
+                    {
+                        int current = authorCounts.GetValueOrDefault(author, 0);
+                        if (current >= 2)
+                        {
+                            deferred.Add(candidate);
+                            continue;
+                        }
+                        authorCounts[author] = current + 1;
+                    }
+                    result.Add(candidate);
+                }
+            }
+
+            // Если не набрали count из-за ограничения автора, добираем отложенные
+            foreach (var item in deferred)
+            {
+                if (result.Count >= count) break;
+                result.Add(item);
             }
 
             return result;

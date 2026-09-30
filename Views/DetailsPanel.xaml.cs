@@ -288,7 +288,7 @@ namespace MovieBookRecommender.Views
                 ? _data.Movies.Concat(_data.Books)
                 : _data.Books.Concat(_data.Movies)).ToList();
 
-            var similar = RecommendationService.RecommendSimilar(item, pool, 2);
+            var similar = RecommendationService.RecommendSimilar(item, pool, limit: 2, favoriteIds: _data.Favorites);
             if (similar.Count == 0)
             {
                 ContentPanel.Children.Add(new TextBlock
@@ -375,7 +375,7 @@ namespace MovieBookRecommender.Views
             ContentPanel.Children.Add(descText);
 
             var pool = _data.AllItems().Where(i => i.Id != currentItem.Id).ToList();
-            var similar = RecommendationService.RecommendSimilar(currentItem, pool, 6);
+            var similar = RecommendationService.RecommendSimilar(currentItem, pool, limit: 6, favoriteIds: _data.Favorites);
             if (_moreSeedOffset > 0 && similar.Count > 3)
             {
                 int shift = _moreSeedOffset % similar.Count;

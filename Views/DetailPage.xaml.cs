@@ -300,7 +300,7 @@ namespace MovieBookRecommender.Views
         {
             _currentColumns = -1;
             var pool = _data.AllItems().Where(i => i.Id != _item.Id).ToList();
-            _similarCandidates = RecommendationService.RecommendSimilar(_item, pool, limit: 12);
+            _similarCandidates = RecommendationService.RecommendSimilar(_item, pool, limit: 12, favoriteIds: _data.Favorites);
 
             if (SimilarEmptyBanner != null && SimilarGrid != null)
             {
