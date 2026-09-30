@@ -9,7 +9,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="ПОДБОР ДЛЯ ВАС" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/>
+            <TextBlock x:Name="HeaderTitle" Grid.Column="0" Text="ПОДБОР ДЛЯ ВАС" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/>
             <Border Grid.Column="1" Width="26" Height="26" CornerRadius="6" Background="Transparent" Cursor="Hand"
                     MouseLeftButtonUp="Refresh_MouseLeftButtonUp">
                 <Border.ToolTip>

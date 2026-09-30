@@ -21,6 +21,10 @@ namespace MovieBookRecommender
         private string _currentPageKey = "home";
         private DispatcherTimer? _toastTimer;
 
+        private record NavigationEntry(string PageKey, MediaItem? DetailItem = null, string? SearchQuery = null, string? GenreFilter = null);
+        private readonly Stack<NavigationEntry> _history = new();
+        private MediaItem? _currentDetailItem;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -89,10 +93,22 @@ namespace MovieBookRecommender
             DetailsPanelControl.ShowItem(featured);
         }
 
-        private void SidebarControl_Navigate(string key) => ShowPage(key);
-
-        public void ShowPage(string key, string? searchQuery = null, string? genreFilter = null)
+        private void SidebarControl_Navigate(string key)
         {
+            _history.Clear();
+            _currentDetailItem = null;
+            ShowPage(key);
+            ShowFeaturedDefault();
+        }
+
+        public void ShowPage(string key, string? searchQuery = null, string? genreFilter = null, bool clearHistory = false)
+        {
+            if (clearHistory)
+            {
+                _history.Clear();
+                _currentDetailItem = null;
+            }
+
             if (!_pages.ContainsKey(key))
                 _pages[key] = CreatePage(key);
 
@@ -155,6 +171,9 @@ namespace MovieBookRecommender
                     var settingsPage = new SettingsPage();
                     settingsPage.Initialize(_data, this, _settings);
                     return settingsPage;
+                case "detail":
+                    var detail = new DetailPage();
+                    return detail;
                 default:
                     throw new ArgumentException($"Неизвестный раздел: {key}");
             }
@@ -168,11 +187,83 @@ namespace MovieBookRecommender
                 case ListPage lp: lp.Refresh(); break;
                 case FavoritesPage fp: fp.Refresh(); break;
                 case HomePage hp: hp.RefreshData(); break;
+                case DetailPage dp: dp.RefreshData(); break;
             }
         }
 
-        /// <summary>Открыть подробности объекта в правой панели (вызывается из карточек).</summary>
-        public void OpenItem(MediaItem item) => DetailsPanelControl.ShowItem(item);
+        /// <summary>
+        /// Открывает полноценный экран подробной информации о произведении (DetailPage)
+        /// с сохранением предыдущего экрана в истории навигации.
+        /// </summary>
+        public void OpenItem(MediaItem item)
+        {
+            if (item == null) return;
+
+            // Запоминаем текущий экран/произведение в историю перехода
+            if (_currentPageKey == "detail" && _currentDetailItem != null)
+            {
+                _history.Push(new NavigationEntry("detail", _currentDetailItem));
+            }
+            else if (_currentPageKey != "detail")
+            {
+                _history.Push(new NavigationEntry(_currentPageKey));
+            }
+
+            ShowDetailPage(item);
+        }
+
+        /// <summary>
+        /// Отображает детальный экран произведения на месте главной центральной области.
+        /// </summary>
+        public void ShowDetailPage(MediaItem item, bool isBackNavigation = false)
+        {
+            _currentDetailItem = item;
+            _currentPageKey = "detail";
+
+            if (!_pages.TryGetValue("detail", out var page) || page is not DetailPage detailPage)
+            {
+                detailPage = new DetailPage();
+                _pages["detail"] = detailPage;
+            }
+
+            detailPage.Initialize(item, _data, this);
+
+            CenterHost.Children.Clear();
+            CenterHost.Children.Add(detailPage);
+
+            // Подсвечиваем в боковом меню раздел (Фильмы или Книги)
+            SidebarControl.SetActive(item.Kind == MediaKind.Movie ? "movies" : "books");
+
+            // В правой панели переключаемся на «Ещё для вас», не дублируя текущее произведение
+            DetailsPanelControl.ShowMoreForYou(item);
+        }
+
+        /// <summary>
+        /// Возвращает на предыдущий шаг по истории навигации.
+        /// </summary>
+        public void NavigateBack()
+        {
+            if (_history.Count > 0)
+            {
+                var prev = _history.Pop();
+                if (prev.PageKey == "detail" && prev.DetailItem != null)
+                {
+                    ShowDetailPage(prev.DetailItem, isBackNavigation: true);
+                }
+                else
+                {
+                    ShowPage(prev.PageKey, searchQuery: prev.SearchQuery, genreFilter: prev.GenreFilter, clearHistory: false);
+                    ShowFeaturedDefault();
+                }
+            }
+            else
+            {
+                // Fallback если истории нет
+                var fallbackKey = _currentDetailItem?.Kind == MediaKind.Book ? "books" : "movies";
+                ShowPage(fallbackKey, clearHistory: false);
+                ShowFeaturedDefault();
+            }
+        }
 
         /// <summary>Вызывается при клике на ♡/♥ на любой карточке.</summary>
         public void OnFavoriteChanged(MediaItem? item)
@@ -183,9 +274,13 @@ namespace MovieBookRecommender
                 RefreshCurrentPage();
             else if (_currentPageKey == "home" && _pages.TryGetValue("home", out var page) && page is HomePage hp)
                 hp.RefreshData();
+            else if (_currentPageKey == "detail" && _pages.TryGetValue("detail", out var dPage) && dPage is DetailPage dp)
+                dp.RefreshData();
 
-            if (DetailsPanelControl.CurrentItem != null)
+            if (_currentPageKey != "detail" && DetailsPanelControl.CurrentItem != null)
                 DetailsPanelControl.ShowItem(DetailsPanelControl.CurrentItem);
+            else if (_currentPageKey == "detail" && _currentDetailItem != null)
+                DetailsPanelControl.ShowMoreForYou(_currentDetailItem);
         }
 
         /// <summary>

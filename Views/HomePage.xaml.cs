@@ -204,6 +204,12 @@ namespace MovieBookRecommender.Views
             _app.OnFavoriteChanged(_currentHeroItem);
         }
 
+        private void HeroPoster_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_currentHeroItem != null)
+                _app.OpenItem(_currentHeroItem);
+        }
+
         // ------------------------------------------------------------------
         // Сетки карточек и адаптивность
         // ------------------------------------------------------------------

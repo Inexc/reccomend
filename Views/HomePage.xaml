@@ -201,8 +201,9 @@
 
                                 <!-- Название произведения -->
                                 <TextBlock x:Name="HeroTitle" Style="{StaticResource H1}" FontSize="28" LineHeight="34"
+                                           Cursor="Hand" MouseLeftButtonUp="HeroPoster_MouseLeftButtonUp"
                                            TextWrapping="Wrap" MaxHeight="68" TextTrimming="CharacterEllipsis" Margin="0,0,0,10"/>
-
+ 
                                 <!-- Жанр · ★ рейтинг · Режиссёр/Автор -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,14">
                                     <TextBlock x:Name="HeroGenresText" Style="{StaticResource BodyText}" Foreground="{StaticResource TextBrush}" FontWeight="Medium" VerticalAlignment="Center"/>
@@ -211,11 +212,11 @@
                                     <TextBlock x:Name="HeroRatingText" Foreground="{StaticResource Accent2Brush}" FontFamily="Segoe UI Semibold" FontSize="13" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="HeroMetaSubText" Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                                 </StackPanel>
-
+ 
                                 <!-- Краткое описание -->
                                 <TextBlock x:Name="HeroDescription" Style="{StaticResource BodyText}"
                                            MaxHeight="58" LineHeight="19" TextTrimming="CharacterEllipsis" Margin="0,0,0,22" Opacity="0.85"/>
-
+ 
                                 <!-- Кнопки действий -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button x:Name="HeroPrimaryBtn" Style="{StaticResource AccentButton}"
@@ -224,9 +225,10 @@
                                             Height="38" Padding="16,0" Click="HeroFavBtn_Click"/>
                                 </StackPanel>
                             </StackPanel>
-
+ 
                             <!-- Правая колонка: крупный постер / изображение с сохранением пропорций -->
                             <Border Grid.Column="1" x:Name="HeroPosterBorder"
+                                    Cursor="Hand" MouseLeftButtonUp="HeroPoster_MouseLeftButtonUp"
                                     Width="206" Height="304" VerticalAlignment="Center" HorizontalAlignment="Right"
                                     CornerRadius="12" ClipToBounds="True"
                                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1">
