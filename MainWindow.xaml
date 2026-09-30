@@ -12,7 +12,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="280"/>
+            <ColumnDefinition Width="244"/>
         </Grid.ColumnDefinitions>
 
         <views:Sidebar x:Name="SidebarControl" Grid.Column="0" Navigate="SidebarControl_Navigate"/>

@@ -3,10 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BgBrush}">
     <ScrollViewer x:Name="MainScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="MainScroll_SizeChanged">
-        <StackPanel Margin="48,28,48,40">
+        <StackPanel Margin="32,20,32,24">
 
             <!-- Контейнер строки поиска с выпадающим блоком результатов -->
-            <Grid HorizontalAlignment="Left" Margin="0,0,0,28" Width="460">
+            <Grid HorizontalAlignment="Left" Margin="0,0,0,20" Width="480">
                 <Border x:Name="SearchBoxContainer"
                         Background="{StaticResource CardBrush}"
                         BorderThickness="1"
@@ -135,62 +135,73 @@
             <StackPanel x:Name="DefaultContentPanel">
 
                 <!-- HERO / FEATURED БЛОК -->
-                <Border x:Name="HeroFrame" CornerRadius="16" ClipToBounds="True" Height="380"
+                <Border x:Name="HeroFrame" CornerRadius="14" ClipToBounds="True" Height="276"
                         Background="{StaticResource CardBrush}"
                         BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                        Margin="0,0,0,36">
+                        Margin="0,0,0,22">
                     <Grid>
                         <!-- Фоновое cinematic-изображение (занимает правую часть и плавно растворяется) -->
                         <Image x:Name="HeroBgImage" Stretch="UniformToFill" HorizontalAlignment="Right" VerticalAlignment="Center"
-                               Opacity="0.28"/>
+                               Opacity="0.22"/>
 
-                        <!-- Горизонтальное градиентное затемнение: 100% тёмный слева, мягкий полупрозрачный справа -->
-                        <Border>
+                        <!-- Мягкий рассеянный радиальный градиент-свечение от обложки в фон баннера -->
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="460" IsHitTestVisible="False">
+                            <Border.Background>
+                                <RadialGradientBrush Center="0.75,0.5" GradientOrigin="0.75,0.5" RadiusX="0.65" RadiusY="0.65">
+                                    <GradientStop Color="#3DC1666B" Offset="0.0"/>
+                                    <GradientStop Color="#22E8B4B8" Offset="0.45"/>
+                                    <GradientStop Color="#001C1619" Offset="1.0"/>
+                                </RadialGradientBrush>
+                            </Border.Background>
+                        </Border>
+
+                        <!-- Горизонтальное градиентное затемнение: плотный слева, мягкий полупрозрачный справа -->
+                        <Border IsHitTestVisible="False">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#F81C1619" Offset="0.0"/>
-                                    <GradientStop Color="#F81C1619" Offset="0.45"/>
-                                    <GradientStop Color="#D91C1619" Offset="0.65"/>
-                                    <GradientStop Color="#731C1619" Offset="0.85"/>
-                                    <GradientStop Color="#331C1619" Offset="1.0"/>
+                                    <GradientStop Color="#FF1C1619" Offset="0.0"/>
+                                    <GradientStop Color="#FF1C1619" Offset="0.44"/>
+                                    <GradientStop Color="#E61C1619" Offset="0.62"/>
+                                    <GradientStop Color="#801C1619" Offset="0.80"/>
+                                    <GradientStop Color="#1A1C1619" Offset="1.0"/>
                                 </LinearGradientBrush>
                             </Border.Background>
                         </Border>
 
                         <!-- Вертикальный мягкий градиент сверху и снизу -->
-                        <Border>
+                        <Border IsHitTestVisible="False">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                    <GradientStop Color="#401C1619" Offset="0.0"/>
-                                    <GradientStop Color="#001C1619" Offset="0.2"/>
-                                    <GradientStop Color="#001C1619" Offset="0.75"/>
-                                    <GradientStop Color="#731C1619" Offset="1.0"/>
+                                    <GradientStop Color="#4D1C1619" Offset="0.0"/>
+                                    <GradientStop Color="#001C1619" Offset="0.22"/>
+                                    <GradientStop Color="#001C1619" Offset="0.78"/>
+                                    <GradientStop Color="#661C1619" Offset="1.0"/>
                                 </LinearGradientBrush>
                             </Border.Background>
                         </Border>
 
                         <!-- Основной контент Hero: две колонки (информация слева, крупный постер справа) -->
-                        <Grid Margin="36,28,36,28">
+                        <Grid Margin="24,12,24,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Левая колонка -->
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,32,0">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
                                 <!-- Лейбл РЕКОМЕНДУЕМ + кнопка смены -->
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
                                     <Border Background="{StaticResource BgBrush}"
                                             BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                                            CornerRadius="6" Padding="10,4" Margin="0,0,10,0">
+                                            CornerRadius="6" Padding="8,3" Margin="0,0,10,0">
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Path Data="{StaticResource IconStar}" Fill="{StaticResource Accent2Brush}" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                            <TextBlock Text="РЕКОМЕНДУЕМ" FontSize="10.5" FontFamily="Segoe UI Semibold"
+                                            <Path Data="{StaticResource IconStar}" Fill="{StaticResource Accent2Brush}" Width="9" Height="9" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <TextBlock Text="РЕКОМЕНДУЕМ" FontSize="10" FontFamily="Segoe UI Semibold"
                                                        Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                     <Button x:Name="HeroSwitchBtn" Style="{StaticResource GhostButton}"
-                                            Height="26" Padding="8,0" VerticalAlignment="Center"
+                                            Height="24" Padding="8,0" VerticalAlignment="Center"
                                             ToolTip="Показать другую рекомендацию" Click="HeroSwitchBtn_Click">
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <Path Data="{StaticResource IconRefresh}" Fill="{StaticResource TextMutedBrush}" Width="9" Height="9" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,5,0"/>
@@ -200,66 +211,67 @@
                                 </StackPanel>
 
                                 <!-- Название произведения -->
-                                <TextBlock x:Name="HeroTitle" Style="{StaticResource H1}" FontSize="28" LineHeight="34"
+                                <TextBlock x:Name="HeroTitle" Style="{StaticResource H1}" FontSize="22" LineHeight="28"
                                            Cursor="Hand" MouseLeftButtonUp="HeroPoster_MouseLeftButtonUp"
-                                           TextWrapping="Wrap" MaxHeight="68" TextTrimming="CharacterEllipsis" Margin="0,0,0,10"/>
- 
+                                           TextWrapping="Wrap" MaxHeight="56" TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+
                                 <!-- Жанр · ★ рейтинг · Режиссёр/Автор -->
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,14">
-                                    <TextBlock x:Name="HeroGenresText" Style="{StaticResource BodyText}" Foreground="{StaticResource TextBrush}" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                    <TextBlock x:Name="HeroGenresText" Style="{StaticResource BodyText}" FontSize="12" Foreground="{StaticResource TextBrush}" FontWeight="Medium" VerticalAlignment="Center"/>
                                     <TextBlock Text=" · " Foreground="{StaticResource Accent2Brush}" FontWeight="Bold" VerticalAlignment="Center"/>
-                                    <TextBlock Text="★" Foreground="{StaticResource Accent2Brush}" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBlock x:Name="HeroRatingText" Foreground="{StaticResource Accent2Brush}" FontFamily="Segoe UI Semibold" FontSize="13" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="HeroMetaSubText" Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                    <TextBlock Text="★" Foreground="{StaticResource Accent2Brush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                    <TextBlock x:Name="HeroRatingText" Foreground="{StaticResource Accent2Brush}" FontFamily="Segoe UI Semibold" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="HeroMetaSubText" Style="{StaticResource SmallText}" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                 </StackPanel>
- 
+
                                 <!-- Краткое описание -->
-                                <TextBlock x:Name="HeroDescription" Style="{StaticResource BodyText}"
-                                           MaxHeight="58" LineHeight="19" TextTrimming="CharacterEllipsis" Margin="0,0,0,22" Opacity="0.85"/>
- 
-                                <!-- Кнопки действий -->
+                                <TextBlock x:Name="HeroDescription" Style="{StaticResource BodyText}" FontSize="12"
+                                           MaxHeight="36" LineHeight="17" TextTrimming="CharacterEllipsis" Margin="0,0,0,14" Opacity="0.88"/>
+
+                                <!-- Кнопки действий: строго одинаковая высота 32px -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button x:Name="HeroPrimaryBtn" Style="{StaticResource AccentButton}"
-                                            Height="38" Padding="20,0" Margin="0,0,12,0" Click="HeroPrimaryBtn_Click"/>
+                                            Height="32" Padding="18,0" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0" Click="HeroPrimaryBtn_Click"/>
                                     <Button x:Name="HeroFavBtn" Style="{StaticResource GhostButton}"
-                                            Height="38" Padding="16,0" Click="HeroFavBtn_Click"/>
+                                            Height="32" Padding="14,0" FontSize="12" VerticalAlignment="Center" Click="HeroFavBtn_Click"/>
                                 </StackPanel>
                             </StackPanel>
- 
-                            <!-- Правая колонка: крупный постер / изображение с сохранением пропорций -->
+
+                            <!-- Правая колонка: крупный постер / обложка с сохранением пропорций, заполняющая высоту -->
                             <Border Grid.Column="1" x:Name="HeroPosterBorder"
                                     Cursor="Hand" MouseLeftButtonUp="HeroPoster_MouseLeftButtonUp"
-                                    Width="206" Height="304" VerticalAlignment="Center" HorizontalAlignment="Right"
-                                    CornerRadius="12" ClipToBounds="True"
+                                    Width="174" Height="252" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                    Background="{StaticResource BgSoftBrush}"
+                                    CornerRadius="10" ClipToBounds="True"
                                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1">
                                 <Border.Effect>
-                                    <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="6" Opacity="0.55"/>
+                                    <DropShadowEffect Color="#000000" BlurRadius="26" ShadowDepth="4" Opacity="0.55"/>
                                 </Border.Effect>
                                 <Grid>
                                     <Image x:Name="HeroPosterImage" Stretch="UniformToFill"/>
-                                    <Border VerticalAlignment="Bottom" Height="60" Background="{StaticResource PosterFadeBrush}" Opacity="0.35"/>
+                                    <Border VerticalAlignment="Bottom" Height="46" Background="{StaticResource PosterFadeBrush}" Opacity="0.32"/>
                                 </Grid>
                             </Border>
                         </Grid>
                     </Grid>
                 </Border>
 
-                <!-- СЕКЦИЯ 1: РЕКОМЕНДУЕМ ДЛЯ ВАС (4 карточки) -->
-                <Grid Margin="0,0,0,14">
+                <!-- СЕКЦИЯ 1: РЕКОМЕНДУЕМ ДЛЯ ВАС -->
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Рекомендуем для вас" Style="{StaticResource H2}"/>
-                        <TextBlock x:Name="RecsSubtitle" Text="На основе ваших предпочтений" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
+                        <TextBlock x:Name="RecsSubtitle" Text="На основе ваших предпочтений" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- Состояние отсутствия данных для рекомендаций (Section 16) -->
                 <Border x:Name="RecsEmptyBanner" Background="{StaticResource CardBrush}"
                         BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                        CornerRadius="12" Padding="24" Margin="0,0,0,36" Visibility="Collapsed">
+                        CornerRadius="12" Padding="24" Margin="0,0,0,22" Visibility="Collapsed">
                     <StackPanel HorizontalAlignment="Center">
                         <Path Data="{StaticResource IconHeart}" Fill="{StaticResource TextFaintBrush}" Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,10" Opacity="0.7"/>
                         <TextBlock Text="Пока недостаточно данных для персонального подбора" Style="{StaticResource H3}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
@@ -268,33 +280,33 @@
                     </StackPanel>
                 </Border>
 
-                <UniformGrid x:Name="RecsGrid" Rows="1" Columns="4" Margin="0,0,0,36"/>
+                <UniformGrid x:Name="RecsGrid" Rows="1" Columns="4" Margin="-8,0,-8,24"/>
 
-                <!-- СЕКЦИЯ 2: ПОПУЛЯРНОЕ (4 карточки) -->
-                <Grid Margin="0,0,0,14">
+                <!-- СЕКЦИЯ 2: ПОПУЛЯРНОЕ -->
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Популярное" Style="{StaticResource H2}"/>
-                        <TextBlock Text="Высокие оценки зрителей и читателей" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
+                        <TextBlock Text="Высокие оценки зрителей и читателей" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
-                <UniformGrid x:Name="PopularGrid" Rows="1" Columns="4" Margin="0,0,0,36"/>
+                <UniformGrid x:Name="PopularGrid" Rows="1" Columns="4" Margin="-8,0,-8,24"/>
 
-                <!-- СЕКЦИЯ 3: НОВИНКИ (4 карточки) -->
-                <Grid Margin="0,0,0,14">
+                <!-- СЕКЦИЯ 3: НОВИНКИ -->
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Новинки" Style="{StaticResource H2}"/>
-                        <TextBlock Text="Свежее из коллекции" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
+                        <TextBlock Text="Свежее из коллекции" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
-                <UniformGrid x:Name="NewGrid" Rows="1" Columns="4" Margin="0,0,0,10"/>
+                <UniformGrid x:Name="NewGrid" Rows="1" Columns="4" Margin="-8,0,-8,12"/>
 
             </StackPanel>
         </StackPanel>

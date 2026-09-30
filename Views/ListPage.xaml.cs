@@ -169,24 +169,104 @@ namespace MovieBookRecommender.Views
 
         private void ApplyResponsiveWidth(double availableWidth)
         {
-            if (availableWidth <= 0 || CardsPanel.Children.Count == 0) return;
+            if (availableWidth <= 0 || CardsPanel == null) return;
 
             var columns = CalculateColumns(availableWidth);
-            var itemWidth = Math.Floor((availableWidth - (columns - 1) * CardGap - 2) / columns);
-
-            for (int i = 0; i < CardsPanel.Children.Count; i++)
+            if (CardsPanel.Columns != columns)
             {
-                if (CardsPanel.Children[i] is CardControl card)
-                {
-                    card.Width = itemWidth;
-                    card.Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, CardGap)
-                        : new Thickness(0, 0, CardGap, CardGap);
-                }
+                CardsPanel.Columns = columns;
             }
         }
 
-        public void Refresh()
+        public class ListPageState
+        {
+            public string SearchText { get; set; } = "";
+            public int GenreIndex { get; set; }
+            public int SortIndex { get; set; }
+            public double ScrollOffset { get; set; }
+        }
+
+        public ListPageState GetCurrentState()
+        {
+            return new ListPageState
+            {
+                SearchText = SearchBox?.Text ?? "",
+                GenreIndex = GenreCombo?.SelectedIndex ?? 0,
+                SortIndex = SortCombo?.SelectedIndex ?? 0,
+                ScrollOffset = CardsScroll?.VerticalOffset ?? 0
+            };
+        }
+
+        public void RestoreState(ListPageState state)
+        {
+            if (state == null) return;
+
+            bool filtersChanged = false;
+            _suppressFilterEvents = true;
+
+            if (SearchBox.Text != state.SearchText)
+            {
+                SearchBox.Text = state.SearchText;
+                filtersChanged = true;
+            }
+
+            var genreItems = GenreCombo.ItemsSource as System.Collections.IList;
+            if (genreItems != null && state.GenreIndex >= 0 && state.GenreIndex < genreItems.Count && GenreCombo.SelectedIndex != state.GenreIndex)
+            {
+                GenreCombo.SelectedIndex = state.GenreIndex;
+                filtersChanged = true;
+            }
+
+            var sortItems = SortCombo.ItemsSource as System.Collections.IList;
+            if (sortItems != null && state.SortIndex >= 0 && state.SortIndex < sortItems.Count && SortCombo.SelectedIndex != state.SortIndex)
+            {
+                SortCombo.SelectedIndex = state.SortIndex;
+                filtersChanged = true;
+            }
+
+            UpdateResetButtonVisibility();
+            _suppressFilterEvents = false;
+
+            if (filtersChanged || CardsPanel.Children.Count == 0)
+            {
+                Refresh(targetScrollOffset: state.ScrollOffset);
+            }
+            else
+            {
+                UpdateCardsFavoriteState();
+                RestoreScroll(state.ScrollOffset);
+            }
+        }
+
+        public void UpdateCardsFavoriteState()
+        {
+            foreach (var child in CardsPanel.Children)
+            {
+                if (child is CardControl card)
+                    card.UpdateFavIcon(animate: false);
+            }
+        }
+
+        public void ScrollToTop()
+        {
+            CardsScroll.ScrollToTop();
+        }
+
+        private void RestoreScroll(double offset)
+        {
+            if (offset <= 0)
+            {
+                CardsScroll.ScrollToTop();
+                return;
+            }
+
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+            {
+                CardsScroll.ScrollToVerticalOffset(offset);
+            }));
+        }
+
+        public void Refresh(double? targetScrollOffset = null)
         {
             var items = _itemsGetter();
 
@@ -228,17 +308,17 @@ namespace MovieBookRecommender.Views
             if (availableWidth <= 0) availableWidth = 800;
 
             var columns = CalculateColumns(availableWidth);
-            var itemWidth = Math.Floor((availableWidth - (columns - 1) * CardGap - 2) / columns);
+            CardsPanel.Columns = columns;
+            var halfGap = CardGap / 2.0;
 
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
                 var card = new CardControl
                 {
-                    Width = itemWidth,
-                    Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, CardGap)
-                        : new Thickness(0, 0, CardGap, CardGap)
+                    Width = double.NaN,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Margin = new Thickness(halfGap, 0, halfGap, CardGap)
                 };
                 card.Initialize(item, _data);
                 card.OpenRequested += _app.OpenItem;
@@ -252,6 +332,11 @@ namespace MovieBookRecommender.Views
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             CardsPanel.BeginAnimation(OpacityProperty, anim);
+
+            if (targetScrollOffset.HasValue)
+            {
+                RestoreScroll(targetScrollOffset.Value);
+            }
         }
     }
 }

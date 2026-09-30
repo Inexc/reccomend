@@ -69,6 +69,7 @@ namespace MovieBookRecommender.Services
                     var bmp = new BitmapImage();
                     bmp.BeginInit();
                     bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.DecodePixelWidth = 300;
                     bmp.UriSource = new Uri(fullPath, UriKind.Absolute);
                     bmp.EndInit();
                     bmp.Freeze();

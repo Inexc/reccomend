@@ -22,10 +22,10 @@ namespace MovieBookRecommender.Views
         private List<MediaItem> _heroCandidates = new();
         private int _currentHeroIndex = 0;
         private readonly DispatcherTimer _searchDebounceTimer;
-        private double _currentCardWidth = 190;
         private List<MediaItem> _recsItems = new();
         private List<MediaItem> _popularItems = new();
         private List<MediaItem> _newItems = new();
+        private int _currentColumns = -1;
 
         public HomePage()
         {
@@ -46,8 +46,48 @@ namespace MovieBookRecommender.Views
             RefreshData();
         }
 
+        public double GetScrollOffset() => MainScroll?.VerticalOffset ?? 0;
+
+        public void RestoreScrollOffset(double offset)
+        {
+            if (offset <= 0)
+            {
+                MainScroll?.ScrollToTop();
+                return;
+            }
+
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+            {
+                MainScroll?.ScrollToVerticalOffset(offset);
+            }));
+        }
+
+        public void ScrollToTop()
+        {
+            MainScroll?.ScrollToTop();
+        }
+
+        public void UpdateCardsFavoriteState()
+        {
+            UpdateHeroFavButton();
+            UpdateGridFavorites(RecsGrid);
+            UpdateGridFavorites(PopularGrid);
+            UpdateGridFavorites(NewGrid);
+        }
+
+        private static void UpdateGridFavorites(UniformGrid? grid)
+        {
+            if (grid == null) return;
+            foreach (var child in grid.Children)
+            {
+                if (child is CardControl card)
+                    card.UpdateFavIcon(animate: false);
+            }
+        }
+
         public void RefreshData()
         {
+            _currentColumns = -1;
             BuildHeroCandidates();
 
             if (_currentHeroItem == null || !_heroCandidates.Any(i => i.Id == _currentHeroItem.Id))
@@ -226,19 +266,19 @@ namespace MovieBookRecommender.Views
             return 2;
         }
 
-        private void PopulateGrid(UniformGrid container, List<MediaItem> items, int columns, double widthPerCard)
+        private void PopulateGrid(UniformGrid container, List<MediaItem> items, int columns)
         {
             container.Children.Clear();
+            var halfGap = CardGap / 2.0;
 
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
                 var card = new CardControl
                 {
-                    Width = widthPerCard,
-                    Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, CardGap, 16)
+                    Width = double.NaN,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Margin = new Thickness(halfGap, 0, halfGap, 0)
                 };
                 card.Initialize(item, _data);
 
@@ -263,12 +303,12 @@ namespace MovieBookRecommender.Views
         {
             var width = MainScroll?.ActualWidth ?? 0;
             if (width <= 0) width = 900;
-            return Math.Max(300, width - 96);
+            return Math.Max(300, width - 64);
         }
 
         private void MainScroll_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 96));
+            ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 64));
         }
 
         private void ApplyResponsiveWidth(double availableWidth)
@@ -276,19 +316,19 @@ namespace MovieBookRecommender.Views
             if (availableWidth <= 0 || RecsGrid == null) return;
 
             var columns = CalculateColumns(availableWidth);
-            var widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
-            _currentCardWidth = widthPerCard;
+            if (columns == _currentColumns) return;
+            _currentColumns = columns;
 
             RecsGrid.Columns = columns;
             PopularGrid.Columns = columns;
             NewGrid.Columns = columns;
 
             if (_recsItems.Count > 0)
-                PopulateGrid(RecsGrid, _recsItems.Take(columns).ToList(), columns, widthPerCard);
+                PopulateGrid(RecsGrid, _recsItems.Take(columns).ToList(), columns);
             if (_popularItems.Count > 0)
-                PopulateGrid(PopularGrid, _popularItems.Take(columns).ToList(), columns, widthPerCard);
+                PopulateGrid(PopularGrid, _popularItems.Take(columns).ToList(), columns);
             if (_newItems.Count > 0)
-                PopulateGrid(NewGrid, _newItems.Take(columns).ToList(), columns, widthPerCard);
+                PopulateGrid(NewGrid, _newItems.Take(columns).ToList(), columns);
         }
 
         // ------------------------------------------------------------------

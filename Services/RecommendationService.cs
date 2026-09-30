@@ -6,83 +6,306 @@ using MovieBookRecommender.Models;
 namespace MovieBookRecommender.Services
 {
     /// <summary>
-    /// Система рекомендаций:
-    /// 1. Подбор похожих для конкретного произведения (seed).
-    /// 2. Персонализированный фид «Рекомендуем для вас» на основе избранного.
-    /// 3. Выбор featured-произведения для Hero-баннера.
+    /// Параметры запроса рекомендаций для единого движка.
+    /// </summary>
+    public class RecommendationOptions
+    {
+        /// <summary>Текущее произведение (для блока «Похожие произведения»).</summary>
+        public MediaItem? SeedItem { get; set; }
+
+        /// <summary>Список идентификаторов избранного пользователя.</summary>
+        public HashSet<string>? FavoriteIds { get; set; }
+
+        /// <summary>Элементы, которые строго не должны присутствовать в выдаче.</summary>
+        public IEnumerable<string>? ExcludeIds { get; set; }
+
+        /// <summary>Опциональный фильтр по типу произведения.</summary>
+        public MediaKind? KindFilter { get; set; }
+
+        /// <summary>Смещение для небольшого разнообразия кандидатов с близкими оценками.</summary>
+        public int VarietyOffset { get; set; } = 0;
+
+        /// <summary>Чередовать фильмы и книги для сбалансированной выдачи.</summary>
+        public bool InterleaveMediaKinds { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Единая система персональных рекомендаций:
+    /// 1. «Рекомендуем для вас» на Главной (на основе избранного или общего топа).
+    /// 2. «Похожие произведения» в Деталях (на основе seed-произведения + вкусов пользователя).
+    /// 3. «На основе вашего избранного» в Избранном (персонализированный фид исключая сохранённое).
+    /// 4. Подбор кандидатов для Hero и сопутствующих подборок.
     /// </summary>
     public static class RecommendationService
     {
-        private static double Score(MediaItem seed, MediaItem candidate)
+        /// <summary>
+        /// Центральный метод системы рекомендаций. Все блоки приложения обращаются к нему.
+        /// </summary>
+        public static List<MediaItem> GetRecommendations(
+            IEnumerable<MediaItem> pool,
+            RecommendationOptions options,
+            int limit = 4)
         {
-            if (seed.Id == candidate.Id)
-                return -1;
+            var poolList = pool.Where(i => i != null).ToList();
+            if (poolList.Count == 0 || limit <= 0)
+                return new List<MediaItem>();
 
-            var seedGenres = new HashSet<string>(seed.Genre, StringComparer.OrdinalIgnoreCase);
-            var overlap = candidate.Genre.Count(g => seedGenres.Contains(g));
-            
-            // Если жанры не пересеклись напрямую, проверяем того же автора/режиссёра
-            if (overlap == 0)
+            // 1. Формируем множество исключений (SeedItem, уже добавленные в избранное, уже показанные)
+            var excludeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (options.ExcludeIds != null)
             {
-                if (!string.IsNullOrWhiteSpace(seed.Author) &&
-                    string.Equals(seed.Author.Trim(), candidate.Author.Trim(), StringComparison.OrdinalIgnoreCase))
+                foreach (var id in options.ExcludeIds)
                 {
-                    overlap = 1;
-                }
-                else
-                {
-                    return 0;
+                    if (!string.IsNullOrWhiteSpace(id))
+                        excludeSet.Add(id);
                 }
             }
 
-            var ratingDiff = Math.Abs(seed.Rating - candidate.Rating);
-            var ratingScore = Math.Max(0.0, 1.0 - ratingDiff / 10.0);
+            if (options.SeedItem != null)
+                excludeSet.Add(options.SeedItem.Id);
 
-            // Бонус за соответствие типа произведения (фильм к фильму, книга к книге),
-            // но кросс-рекомендации также возможны при высоком совпадении жанров
-            var kindBonus = (seed.Kind == candidate.Kind) ? 4.0 : 0.0;
+            if (options.FavoriteIds != null)
+            {
+                foreach (var favId in options.FavoriteIds)
+                    excludeSet.Add(favId);
+            }
 
-            return overlap * 10.0 + ratingScore * 2.0 + candidate.Rating * 0.1 + kindBonus;
-        }
+            // Кандидаты, удовлетворяющие фильтру типа и исключениям
+            var candidates = poolList.Where(i => !excludeSet.Contains(i.Id)).ToList();
+            if (options.KindFilter.HasValue)
+                candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
 
-        public static List<MediaItem> RecommendSimilar(MediaItem seed, IEnumerable<MediaItem> pool, int limit = 4)
-        {
-            var poolList = pool.Where(item => item.Id != seed.Id).ToList();
-            var ranked = poolList
-                .Select(item => (Item: item, Score: Score(seed, item)))
-                .Where(pair => pair.Score > 0)
-                .OrderByDescending(pair => pair.Score)
-                .ThenByDescending(pair => pair.Item.Rating)
-                .Take(limit)
-                .Select(pair => pair.Item)
+            // Если кандидатов меньше требуемого, снимаем строгое ограничение по избранному (кроме seed)
+            if (candidates.Count == 0)
+            {
+                candidates = poolList
+                    .Where(i => options.SeedItem == null || !string.Equals(i.Id, options.SeedItem.Id, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (options.KindFilter.HasValue)
+                    candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
+            }
+
+            if (candidates.Count == 0)
+                return new List<MediaItem>();
+
+            // 2. Строим профиль вкусов пользователя на основе избранного
+            var favItems = poolList
+                .Where(i => options.FavoriteIds != null && options.FavoriteIds.Contains(i.Id))
                 .ToList();
 
-            if (ranked.Count < limit && poolList.Count > ranked.Count)
+            var userGenreWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var userAuthors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int movieFavs = 0;
+            int bookFavs = 0;
+
+            if (favItems.Count > 0)
             {
-                var added = new HashSet<string>(ranked.Select(r => r.Id));
-                // Сначала того же типа по рейтингу
-                foreach (var item in poolList.Where(i => i.Kind == seed.Kind).OrderByDescending(i => i.Rating))
+                foreach (var fav in favItems)
                 {
-                    if (ranked.Count >= limit) break;
-                    if (added.Add(item.Id))
-                        ranked.Add(item);
-                }
-                // Затем любые оставшиеся
-                foreach (var item in poolList.OrderByDescending(i => i.Rating))
-                {
-                    if (ranked.Count >= limit) break;
-                    if (added.Add(item.Id))
-                        ranked.Add(item);
+                    // Оценка сохранённого произведения влияет на вес жанра (шедевры 9.0 дают больший вес, чем 7.0)
+                    double favWeight = Math.Max(1.0, fav.Rating - 5.0);
+
+                    foreach (var genre in fav.Genre)
+                    {
+                        userGenreWeights[genre] = userGenreWeights.GetValueOrDefault(genre, 0.0) + favWeight;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(fav.Author))
+                        userAuthors.Add(fav.Author.Trim());
+
+                    if (fav.Kind == MediaKind.Movie) movieFavs++;
+                    else if (fav.Kind == MediaKind.Book) bookFavs++;
                 }
             }
 
-            return ranked;
+            double movieAffinity = favItems.Count > 0 ? (double)movieFavs / favItems.Count : 0.5;
+            double bookAffinity = favItems.Count > 0 ? (double)bookFavs / favItems.Count : 0.5;
+
+            // 3. Вычисляем релевантность каждого кандидата
+            var ranked = candidates
+                .Select(candidate => (
+                    Item: candidate,
+                    Score: ScoreCandidate(candidate, options, userGenreWeights, userAuthors, movieAffinity, bookAffinity, favItems.Count)
+                ))
+                .OrderByDescending(p => p.Score)
+                .ThenByDescending(p => p.Item.Rating)
+                .Select(p => p.Item)
+                .ToList();
+
+            // 4. Разнообразие авторов и чередование типов контента
+            List<MediaItem> result;
+            if (options.InterleaveMediaKinds && options.KindFilter == null)
+            {
+                result = InterleaveKindsWithDiversity(ranked, limit);
+            }
+            else
+            {
+                result = PickWithAuthorDiversity(ranked, limit);
+            }
+
+            // 5. Защитное дополнение (Requirement 7):
+            // Если подходящих рекомендаций недостаточно, аккуратно дополняем высокорейтинговыми элементами
+            if (result.Count < limit && poolList.Count > result.Count)
+            {
+                var addedIds = new HashSet<string>(result.Select(r => r.Id), StringComparer.OrdinalIgnoreCase);
+                if (options.SeedItem != null) addedIds.Add(options.SeedItem.Id);
+                if (options.FavoriteIds != null)
+                {
+                    foreach (var fid in options.FavoriteIds) addedIds.Add(fid);
+                }
+
+                // Дополняем кандидатами того же типа (если есть предпочтение)
+                var fallbackPool = poolList
+                    .Where(i => !addedIds.Contains(i.Id))
+                    .OrderByDescending(i => i.Rating)
+                    .ToList();
+
+                foreach (var item in fallbackPool)
+                {
+                    if (result.Count >= limit) break;
+                    if (addedIds.Add(item.Id))
+                        result.Add(item);
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
-        /// Чередует фильмы и книги, чтобы избежать однообразия («Фильм, Фильм, Фильм, Фильм»).
+        /// Комплексная оценка кандидата.
         /// </summary>
-        public static List<MediaItem> InterleaveKinds(IEnumerable<MediaItem> items, int count)
+        private static double ScoreCandidate(
+            MediaItem c,
+            RecommendationOptions options,
+            Dictionary<string, double> userGenreWeights,
+            HashSet<string> userAuthors,
+            double movieAffinity,
+            double bookAffinity,
+            int totalFavCount)
+        {
+            double score = 0.0;
+
+            // 1. Базовый рейтинг кандидата (1.8 * Rating)
+            score += c.Rating * 1.8;
+
+            // 2. Сходство с SeedItem (для «Похожие произведения» / DetailPage)
+            if (options.SeedItem != null)
+            {
+                var seed = options.SeedItem;
+                var seedGenres = new HashSet<string>(seed.Genre, StringComparer.OrdinalIgnoreCase);
+                int overlap = c.Genre.Count(g => seedGenres.Contains(g));
+
+                // Совпадение по жанрам с текущим произведением
+                score += overlap * 14.0;
+
+                // Тот же автор или режиссёр
+                if (!string.IsNullOrWhiteSpace(seed.Author) && !string.IsNullOrWhiteSpace(c.Author) &&
+                    string.Equals(seed.Author.Trim(), c.Author.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    score += 18.0;
+                }
+
+                // Тот же тип произведения (фильм к фильму, книга к книге)
+                if (c.Kind == seed.Kind)
+                {
+                    score += 5.0;
+                }
+
+                // Близость рейтингов (шедевры к шедеврам)
+                double diff = Math.Abs(seed.Rating - c.Rating);
+                score += Math.Max(0.0, 2.0 - diff * 0.5);
+            }
+
+            // 3. Вкус пользователя на основе Избранного
+            if (totalFavCount > 0)
+            {
+                // Совпадение жанров кандидата с профилем избранного
+                double userGenreScore = 0.0;
+                foreach (var g in c.Genre)
+                {
+                    if (userGenreWeights.TryGetValue(g, out var gw))
+                    {
+                        userGenreScore += gw * 4.5;
+                    }
+                }
+
+                // Если задан SeedItem, вкусы пользователя служат вспомогательным бустером (35%),
+                // если SeedItem нет (Главная или Избранное) — вкусы пользователя определяют основной приоритет (100%)
+                score += options.SeedItem != null ? userGenreScore * 0.35 : userGenreScore;
+
+                // Тот же автор/режиссёр, что и в избранном
+                if (!string.IsNullOrWhiteSpace(c.Author) && userAuthors.Contains(c.Author.Trim()))
+                {
+                    score += 7.0;
+                }
+
+                // Предпочтение по типу контента (только если нет конкретного seed)
+                if (options.SeedItem == null)
+                {
+                    double kindBonus = (c.Kind == MediaKind.Movie ? movieAffinity : bookAffinity) * 3.5;
+                    score += kindBonus;
+                }
+            }
+
+            // 4. Мягкий фактор года выпуска (лёгкое предпочтение признанной классики и свежих хитов)
+            if (c.Year > 1990)
+            {
+                score += Math.Min(1.5, (c.Year - 1990) * 0.04);
+            }
+
+            // 5. Небольшое разнообразие (Requirement 5)
+            // Детерминированный псевдо-джиттер от 0.0 до 1.5, зависящий от ID и VarietyOffset,
+            // чтобы среди кандидатов с одинаково высокими оценками не выпадал один и тот же порядок
+            int jitterHash = Math.Abs((c.Id.GetHashCode() ^ (options.VarietyOffset * 397))) % 100;
+            score += (jitterHash / 100.0) * 1.5;
+
+            return score;
+        }
+
+        /// <summary>
+        /// Выбирает элементы с ограничением дублирования одного автора (не более 2 на подборку).
+        /// </summary>
+        private static List<MediaItem> PickWithAuthorDiversity(IEnumerable<MediaItem> candidates, int count)
+        {
+            var result = new List<MediaItem>();
+            var authorCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            var deferred = new List<MediaItem>();
+
+            foreach (var item in candidates)
+            {
+                if (result.Count >= count) break;
+
+                var author = item.Author?.Trim() ?? "";
+                if (!string.IsNullOrEmpty(author))
+                {
+                    int current = authorCounts.GetValueOrDefault(author, 0);
+                    if (current >= 2)
+                    {
+                        deferred.Add(item);
+                        continue;
+                    }
+                    authorCounts[author] = current + 1;
+                }
+
+                result.Add(item);
+            }
+
+            // Если не набрали count из-за ограничения автора, добираем отложенные
+            foreach (var item in deferred)
+            {
+                if (result.Count >= count) break;
+                result.Add(item);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Чередует фильмы и книги для поддержания мультимедийного баланса коллекции.
+        /// </summary>
+        private static List<MediaItem> InterleaveKindsWithDiversity(IEnumerable<MediaItem> items, int count)
         {
             var list = items.ToList();
             var movies = list.Where(i => i.Kind == MediaKind.Movie).ToList();
@@ -123,171 +346,186 @@ namespace MovieBookRecommender.Services
             return result;
         }
 
+        // ==================================================================
+        // ПУБЛИЧНЫЕ МЕТОДЫ (Обратная совместимость со всеми страницами)
+        // ==================================================================
+
         /// <summary>
-        /// Формирует персонализированный список «Рекомендуем для вас».
-        /// Если у пользователя есть избранное — взвешивает жанры избранного и предлагает подходящее.
-        /// Чередует фильмы и книги для разнообразия.
+        /// Формирует персональный список «Рекомендуем для вас» (Главная)
+        /// и «На основе вашего избранного» (Избранное).
         /// </summary>
-        public static List<MediaItem> BuildPersonalizedFeed(IEnumerable<MediaItem> pool, HashSet<string> favoriteIds, int limit = 4, IEnumerable<string>? excludeIds = null)
+        public static List<MediaItem> BuildPersonalizedFeed(
+            IEnumerable<MediaItem> pool,
+            HashSet<string> favoriteIds,
+            int limit = 4,
+            IEnumerable<string>? excludeIds = null,
+            int varietyOffset = 0)
+        {
+            return GetRecommendations(pool, new RecommendationOptions
+            {
+                FavoriteIds = favoriteIds,
+                ExcludeIds = excludeIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = true
+            }, limit);
+        }
+
+        /// <summary>
+        /// Подбор «Похожие произведения» (Детальный экран и боковая панель).
+        /// Учитывает совпадение с выбранным произведением, вкусы пользователя и исключает дубли.
+        /// </summary>
+        public static List<MediaItem> RecommendSimilar(
+            MediaItem seed,
+            IEnumerable<MediaItem> pool,
+            int limit = 4,
+            HashSet<string>? favoriteIds = null,
+            IEnumerable<string>? excludeIds = null,
+            int varietyOffset = 0)
+        {
+            return GetRecommendations(pool, new RecommendationOptions
+            {
+                SeedItem = seed,
+                FavoriteIds = favoriteIds,
+                ExcludeIds = excludeIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = false
+            }, limit);
+        }
+
+        /// <summary>
+        /// Секция «Популярное»: общепризнанные произведения с наивысшими оценками.
+        /// </summary>
+        public static List<MediaItem> BuildPopularFeed(
+            IEnumerable<MediaItem> pool,
+            IEnumerable<string>? excludeIds = null,
+            int limit = 4,
+            int varietyOffset = 0)
+        {
+            return GetRecommendations(pool, new RecommendationOptions
+            {
+                ExcludeIds = excludeIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = true
+            }, limit);
+        }
+
+        /// <summary>
+        /// Секция «Новинки»: свежие произведения из коллекции с высокими оценками.
+        /// </summary>
+        public static List<MediaItem> BuildNewReleasesFeed(
+            IEnumerable<MediaItem> pool,
+            IEnumerable<string>? excludeIds = null,
+            int limit = 4,
+            int varietyOffset = 0)
         {
             var poolList = pool.ToList();
-            if (poolList.Count == 0)
-                return new List<MediaItem>();
-
             var excludeSet = excludeIds != null ? new HashSet<string>(excludeIds) : new HashSet<string>();
 
-            var favItems = poolList.Where(i => favoriteIds.Contains(i.Id)).ToList();
-            if (favItems.Count == 0)
-            {
-                // Если избранного пока нет — выдаем самые высокорейтинговые произведения, чередуя типы
-                var nonExcluded = poolList.Where(i => !excludeSet.Contains(i.Id)).OrderByDescending(i => i.Rating).ToList();
-                return InterleaveKinds(nonExcluded, limit);
-            }
-
-            // Частотный словарь жанров из избранного
-            var genreWeights = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var g in favItems.SelectMany(i => i.Genre))
-            {
-                genreWeights[g] = genreWeights.GetValueOrDefault(g, 0) + 1;
-            }
-
-            var candidates = poolList.Where(i => !favoriteIds.Contains(i.Id) && !excludeSet.Contains(i.Id)).ToList();
-            if (candidates.Count == 0)
-                candidates = poolList.Where(i => !excludeSet.Contains(i.Id)).ToList();
-
-            var ranked = candidates
-                .Select(item =>
-                {
-                    var genreScore = item.Genre.Sum(g => genreWeights.GetValueOrDefault(g, 0) * 3.5);
-                    var ratingScore = item.Rating * 1.5;
-                    var totalScore = genreScore + ratingScore;
-                    return (Item: item, Score: totalScore);
-                })
-                .OrderByDescending(pair => pair.Score)
-                .ThenByDescending(pair => pair.Item.Rating)
-                .Select(pair => pair.Item)
+            // Для новинок фильтруем пул по свежести года выпуска
+            var candidates = poolList
+                .Where(i => !excludeSet.Contains(i.Id))
+                .OrderByDescending(i => i.Year)
+                .ThenByDescending(i => i.Rating)
+                .Take(limit * 3)
                 .ToList();
 
-            return InterleaveKinds(ranked, limit);
+            return GetRecommendations(candidates, new RecommendationOptions
+            {
+                ExcludeIds = excludeIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = true
+            }, limit);
         }
 
         /// <summary>
-        /// Секция «Популярное»: элементы с наивысшим рейтингом, без дублирования уже показанных.
+        /// Выбирает главный объект для блока Hero / «Подбор для вас».
         /// </summary>
-        public static List<MediaItem> BuildPopularFeed(IEnumerable<MediaItem> pool, IEnumerable<string>? excludeIds = null, int limit = 4)
+        public static MediaItem? PickFeatured(
+            IEnumerable<MediaItem> pool,
+            HashSet<string> favoriteIds,
+            int varietyOffset = 0)
         {
-            var excludeSet = excludeIds != null ? new HashSet<string>(excludeIds) : new HashSet<string>();
-            var candidates = pool.Where(i => !excludeSet.Contains(i.Id)).OrderByDescending(i => i.Rating).ToList();
-            return InterleaveKinds(candidates, limit);
+            var picks = GetRecommendations(pool, new RecommendationOptions
+            {
+                FavoriteIds = favoriteIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = true
+            }, limit: 1);
+
+            return picks.FirstOrDefault();
         }
 
         /// <summary>
-        /// Секция «Новинки»: элементы с самыми свежими годами выпуска, без дублирования уже показанных.
+        /// Возвращает список разнообразных кандидатов для переключения в Hero-блоке (кнопка «Сменить»).
         /// </summary>
-        public static List<MediaItem> BuildNewReleasesFeed(IEnumerable<MediaItem> pool, IEnumerable<string>? excludeIds = null, int limit = 4)
-        {
-            var excludeSet = excludeIds != null ? new HashSet<string>(excludeIds) : new HashSet<string>();
-            var candidates = pool.Where(i => !excludeSet.Contains(i.Id))
-                                 .OrderByDescending(i => i.Year)
-                                 .ThenByDescending(i => i.Rating)
-                                 .ToList();
-            return InterleaveKinds(candidates, limit);
-        }
-
-        /// <summary>
-        /// Возвращает список кандидатов для Hero-блока (для возможности переключения рекомендаций).
-        /// </summary>
-        public static List<MediaItem> PickFeaturedCandidates(IEnumerable<MediaItem> pool, HashSet<string> favoriteIds, int count = 5)
+        public static List<MediaItem> PickFeaturedCandidates(
+            IEnumerable<MediaItem> pool,
+            HashSet<string> favoriteIds,
+            int count = 6,
+            int varietyOffset = 0)
         {
             var poolList = pool.ToList();
             if (poolList.Count == 0) return new List<MediaItem>();
 
             var result = new List<MediaItem>();
-            var addedIds = new HashSet<string>();
+            var addedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // 1. Главная персонализированная рекомендация
-            var topPick = PickFeatured(poolList, favoriteIds);
-            if (topPick != null)
+            // 1. Главная персонализированная рекомендация на основе профиля
+            var topPicks = GetRecommendations(poolList, new RecommendationOptions
             {
-                result.Add(topPick);
-                addedIds.Add(topPick.Id);
+                FavoriteIds = favoriteIds,
+                VarietyOffset = varietyOffset,
+                InterleaveMediaKinds = true
+            }, limit: 2);
+
+            foreach (var pick in topPicks)
+            {
+                if (addedIds.Add(pick.Id))
+                    result.Add(pick);
             }
 
             // 2. Лучший фильм
-            var bestMovie = poolList.Where(i => i.Kind == MediaKind.Movie && !addedIds.Contains(i.Id))
-                                    .OrderByDescending(i => i.Rating)
-                                    .FirstOrDefault();
-            if (bestMovie != null)
-            {
+            var bestMovie = poolList
+                .Where(i => i.Kind == MediaKind.Movie && !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .OrderByDescending(i => i.Rating)
+                .FirstOrDefault();
+            if (bestMovie != null && addedIds.Add(bestMovie.Id))
                 result.Add(bestMovie);
-                addedIds.Add(bestMovie.Id);
-            }
 
             // 3. Лучшая книга
-            var bestBook = poolList.Where(i => i.Kind == MediaKind.Book && !addedIds.Contains(i.Id))
-                                   .OrderByDescending(i => i.Rating)
-                                   .FirstOrDefault();
-            if (bestBook != null)
-            {
+            var bestBook = poolList
+                .Where(i => i.Kind == MediaKind.Book && !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .OrderByDescending(i => i.Rating)
+                .FirstOrDefault();
+            if (bestBook != null && addedIds.Add(bestBook.Id))
                 result.Add(bestBook);
-                addedIds.Add(bestBook.Id);
-            }
 
-            // 4. Самая свежая новинка с высоким рейтингом
-            var newest = poolList.Where(i => !addedIds.Contains(i.Id))
-                                 .OrderByDescending(i => i.Year)
-                                 .ThenByDescending(i => i.Rating)
-                                 .FirstOrDefault();
-            if (newest != null)
-            {
+            // 4. Свежий хит
+            var newest = poolList
+                .Where(i => !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .OrderByDescending(i => i.Year)
+                .ThenByDescending(i => i.Rating)
+                .FirstOrDefault();
+            if (newest != null && addedIds.Add(newest.Id))
                 result.Add(newest);
-                addedIds.Add(newest.Id);
-            }
 
-            // 5. Оставшийся топ по рейтингу
+            // 5. Дополняем до count из оставшихся
             foreach (var item in poolList.OrderByDescending(i => i.Rating))
             {
                 if (result.Count >= count) break;
-                if (!addedIds.Contains(item.Id))
-                {
+                if (!favoriteIds.Contains(item.Id) && addedIds.Add(item.Id))
                     result.Add(item);
-                    addedIds.Add(item.Id);
-                }
             }
 
             return result;
         }
 
-        /// <summary>Выбирает объект для блока Hero / «Подбор для вас».</summary>
-        public static MediaItem? PickFeatured(IEnumerable<MediaItem> pool, HashSet<string> favoriteIds)
+        /// <summary>
+        /// Вспомогательный метод для чередования типов произведений.
+        /// </summary>
+        public static List<MediaItem> InterleaveKinds(IEnumerable<MediaItem> items, int count)
         {
-            var poolList = pool.ToList();
-            if (poolList.Count == 0)
-                return null;
-
-            var favoriteItems = poolList.Where(i => favoriteIds.Contains(i.Id)).ToList();
-            if (favoriteItems.Count > 0)
-            {
-                var likedGenres = new HashSet<string>(favoriteItems.SelectMany(i => i.Genre), StringComparer.OrdinalIgnoreCase);
-                var candidates = poolList.Where(i => !favoriteIds.Contains(i.Id)).ToList();
-
-                MediaItem? best = null;
-                double bestScore = -1;
-                foreach (var item in candidates)
-                {
-                    var overlap = item.Genre.Count(g => likedGenres.Contains(g));
-                    var score = overlap * 10 + item.Rating;
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        best = item;
-                    }
-                }
-                if (best != null)
-                    return best;
-            }
-
-            return poolList.OrderByDescending(i => i.Rating).First();
+            return InterleaveKindsWithDiversity(items, count);
         }
     }
 }

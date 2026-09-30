@@ -27,6 +27,7 @@ namespace MovieBookRecommender.Views
         private DataManager _data = null!;
         private bool _isHovered;
         private bool _isPressed;
+        private double _lastWidth = -1;
 
         public event Action<MediaItem>? OpenRequested;
         public event Action<MediaItem>? FavoriteChanged;
@@ -36,9 +37,14 @@ namespace MovieBookRecommender.Views
         private static readonly Color FavColor = Color.FromRgb(0xC1, 0x66, 0x6B);
         private static readonly Color FavHoverColor = Color.FromRgb(0xCD, 0x7A, 0x7F);
 
+        private static readonly Color BorderNormalColor = Color.FromRgb(0x2D, 0x23, 0x28);
+        private static readonly Color BorderHoverColor = Color.FromRgb(0x56, 0x3F, 0x4E);
+        private readonly SolidColorBrush _frameBorderBrush = new(BorderNormalColor);
+
         public CardControl()
         {
             InitializeComponent();
+            PosterFrame.BorderBrush = _frameBorderBrush;
         }
 
         public void Initialize(MediaItem item, DataManager data)
@@ -75,9 +81,7 @@ namespace MovieBookRecommender.Views
                 PosterImage.Source = null;
                 PosterImage.Visibility = Visibility.Collapsed;
                 FallbackContainer.Visibility = Visibility.Visible;
-                FallbackLetter.Text = string.IsNullOrWhiteSpace(item.Title)
-                    ? "?"
-                    : item.Title.Trim().Substring(0, 1).ToUpper();
+                FallbackKindText.Text = item.Kind == MediaKind.Movie ? "ФИЛЬМ" : "КНИГА";
                 FallbackIcon.Data = item.Kind == MediaKind.Movie
                     ? (Geometry)Application.Current.Resources["IconFilm"]
                     : (Geometry)Application.Current.Resources["IconBook"];
@@ -88,44 +92,45 @@ namespace MovieBookRecommender.Views
 
         private void CardControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (e.NewSize.Width > 0 && !double.IsNaN(e.NewSize.Width))
-            {
-                var targetHeight = Math.Round(e.NewSize.Width * 1.44);
-                if (Math.Abs(PosterFrame.Height - targetHeight) > 1)
-                {
-                    PosterFrame.Height = targetHeight;
-                    Height = targetHeight;
-                }
+            if (e.NewSize.Width <= 0 || double.IsNaN(e.NewSize.Width)) return;
+            if (Math.Abs(e.NewSize.Width - _lastWidth) < 2) return;
+            _lastWidth = e.NewSize.Width;
 
-                // Адаптация внутренних размеров для компактного отображения (например, в боковой панели)
-                if (e.NewSize.Width < 145)
-                {
-                    HeartBadge.Width = 24;
-                    HeartBadge.Height = 24;
-                    HeartBadge.CornerRadius = new CornerRadius(12);
-                    FavIcon.FontSize = 10.5;
-                    GenreText.FontSize = 9.5;
-                    RatingText.FontSize = 10;
-                    TitleText.FontSize = 11;
-                    TitleText.MaxHeight = 28;
-                    TitleText.LineHeight = 14;
-                    SubtitleText.FontSize = 9.5;
-                    BottomGradient.Height = 115;
-                }
-                else
-                {
-                    HeartBadge.Width = 30;
-                    HeartBadge.Height = 30;
-                    HeartBadge.CornerRadius = new CornerRadius(15);
-                    FavIcon.FontSize = 13.5;
-                    GenreText.FontSize = 11;
-                    RatingText.FontSize = 11.5;
-                    TitleText.FontSize = 13.5;
-                    TitleText.MaxHeight = 38;
-                    TitleText.LineHeight = 18;
-                    SubtitleText.FontSize = 11;
-                    BottomGradient.Height = 148;
-                }
+            var targetHeight = Math.Round(e.NewSize.Width * 1.44);
+            if (Math.Abs(PosterFrame.Height - targetHeight) > 2)
+            {
+                PosterFrame.Height = targetHeight;
+                Height = targetHeight;
+            }
+
+            // Адаптация внутренних размеров для компактного отображения (например, в боковой панели)
+            if (e.NewSize.Width < 145)
+            {
+                HeartBadge.Width = 24;
+                HeartBadge.Height = 24;
+                HeartBadge.CornerRadius = new CornerRadius(12);
+                FavIcon.FontSize = 10.5;
+                GenreText.FontSize = 9.5;
+                RatingText.FontSize = 10;
+                TitleText.FontSize = 11;
+                TitleText.MaxHeight = 28;
+                TitleText.LineHeight = 14;
+                SubtitleText.FontSize = 9.5;
+                BottomGradient.Height = 115;
+            }
+            else
+            {
+                HeartBadge.Width = 30;
+                HeartBadge.Height = 30;
+                HeartBadge.CornerRadius = new CornerRadius(15);
+                FavIcon.FontSize = 13.5;
+                GenreText.FontSize = 11;
+                RatingText.FontSize = 11.5;
+                TitleText.FontSize = 13.5;
+                TitleText.MaxHeight = 38;
+                TitleText.LineHeight = 18;
+                SubtitleText.FontSize = 11;
+                BottomGradient.Height = 148;
             }
         }
 
@@ -138,14 +143,12 @@ namespace MovieBookRecommender.Views
             {
                 var accentBrush = (SolidColorBrush)Application.Current.Resources["AccentBrush"];
                 CardShadowEffect.Color = accentBrush.Color;
-                CardShadowEffect.Opacity = 0.40;
-                CardShadowEffect.BlurRadius = 16;
+                CardShadowEffect.Opacity = 0.38;
             }
             else
             {
                 CardShadowEffect.Color = Colors.Black;
-                CardShadowEffect.Opacity = _isHovered ? 0.48 : 0.28;
-                CardShadowEffect.BlurRadius = _isHovered ? 20 : 12;
+                CardShadowEffect.Opacity = _isHovered ? 0.38 : 0.22;
             }
         }
 
@@ -215,9 +218,9 @@ namespace MovieBookRecommender.Views
         private void RootBorder_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             _isPressed = true;
-            AnimateScale(0.985, 80);
-            AnimateTranslate(0.0, 80);
-            AnimateShadow(opacity: 0.35, blur: 8, depth: 2, durationMs: 80);
+            AnimateScale(0.985, 60);
+            AnimateTranslate(0.0, 60);
+            AnimateShadow(0.28, 60);
         }
 
         private void RootBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -227,15 +230,15 @@ namespace MovieBookRecommender.Views
                 _isPressed = false;
                 if (_isHovered)
                 {
-                    AnimateScale(1.025, 120);
-                    AnimateTranslate(-3.0, 120);
-                    AnimateShadow(opacity: 0.48, blur: 20, depth: 5, durationMs: 120);
+                    AnimateScale(1.015, 100);
+                    AnimateTranslate(-2.5, 100);
+                    AnimateShadow(0.38, 100);
                 }
                 else
                 {
-                    AnimateScale(1.0, 120);
-                    AnimateTranslate(0.0, 120);
-                    AnimateShadow(opacity: IsSelected ? 0.40 : 0.28, blur: 12, depth: 3, durationMs: 120);
+                    AnimateScale(1.0, 100);
+                    AnimateTranslate(0.0, 100);
+                    AnimateShadow(IsSelected ? 0.38 : 0.22, 100);
                 }
 
                 if (Item != null)
@@ -246,31 +249,27 @@ namespace MovieBookRecommender.Views
         private void RootBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
         {
             _isHovered = true;
-            AnimateScale(1.025, 180);
-            AnimateTranslate(-3.0, 180);
-            AnimateImageZoom(1.035);
-            AnimateOpacity(BrightenOverlay, 0.04);
-            AnimateOpacity(BottomGradient, 0.98);
-            AnimateShadow(opacity: 0.48, blur: 20, depth: 5, durationMs: 180);
+            AnimateScale(1.015, 120);
+            AnimateTranslate(-2.5, 120);
+            AnimateShadow(0.38, 120);
+            AnimateColor(_frameBorderBrush, BorderHoverColor);
 
             HeartBadge.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180)));
+                new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(120)));
         }
 
         private void RootBorder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
         {
             _isHovered = false;
             _isPressed = false;
-            AnimateScale(1.0, 180);
-            AnimateTranslate(0.0, 180);
-            AnimateImageZoom(1.0);
-            AnimateOpacity(BrightenOverlay, 0);
-            AnimateOpacity(BottomGradient, 0.92);
-            AnimateShadow(opacity: IsSelected ? 0.40 : 0.28, blur: 12, depth: 3, durationMs: 180);
+            AnimateScale(1.0, 120);
+            AnimateTranslate(0.0, 120);
+            AnimateShadow(IsSelected ? 0.38 : 0.22, 120);
+            AnimateColor(_frameBorderBrush, BorderNormalColor);
 
             var isFav = _data?.IsFavorite(Item?.Id ?? "") ?? false;
             HeartBadge.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(isFav ? 1.0 : 0.80, TimeSpan.FromMilliseconds(180)));
+                new DoubleAnimation(isFav ? 1.0 : 0.80, TimeSpan.FromMilliseconds(120)));
         }
 
         private void HeartBadge_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -284,7 +283,7 @@ namespace MovieBookRecommender.Views
             UpdateFavIcon(animate: true);
         }
 
-        private void AnimateScale(double to, int durationMs = 180)
+        private void AnimateScale(double to, int durationMs = 120)
         {
             var duration = TimeSpan.FromMilliseconds(durationMs);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
@@ -292,39 +291,24 @@ namespace MovieBookRecommender.Views
             CardScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
         }
 
-        private void AnimateTranslate(double toY, int durationMs = 180)
+        private void AnimateTranslate(double toY, int durationMs = 120)
         {
             var duration = TimeSpan.FromMilliseconds(durationMs);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
             CardTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(toY, duration) { EasingFunction = ease });
         }
 
-        private void AnimateImageZoom(double to)
-        {
-            var duration = TimeSpan.FromMilliseconds(200);
-            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-            ImageScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
-            ImageScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
-        }
-
-        private void AnimateShadow(double opacity, double blur, double depth, int durationMs = 180)
+        private void AnimateShadow(double opacity, int durationMs = 120)
         {
             var duration = TimeSpan.FromMilliseconds(durationMs);
             CardShadowEffect.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(opacity, duration));
-            CardShadowEffect.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(blur, duration));
-            CardShadowEffect.BeginAnimation(DropShadowEffect.ShadowDepthProperty, new DoubleAnimation(depth, duration));
-        }
-
-        private static void AnimateOpacity(UIElement element, double to)
-        {
-            var duration = TimeSpan.FromMilliseconds(180);
-            element.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(to, duration));
         }
 
         private static void AnimateColor(SolidColorBrush brush, Color to)
         {
-            var duration = TimeSpan.FromMilliseconds(150);
+            var duration = TimeSpan.FromMilliseconds(120);
             brush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(to, duration));
         }
     }
 }
+

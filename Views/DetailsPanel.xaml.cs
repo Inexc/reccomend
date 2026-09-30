@@ -108,13 +108,13 @@ namespace MovieBookRecommender.Views
                 return;
             }
 
-            // Постер
+            // Постер (компактный и аккуратный: 185px)
             var posterBorder = new Border
             {
-                CornerRadius = new CornerRadius(10),
+                CornerRadius = new CornerRadius(8),
                 ClipToBounds = true,
-                Height = 230,
-                Margin = new Thickness(0, 0, 0, 12),
+                Height = 185,
+                Margin = new Thickness(0, 0, 0, 10),
                 BorderBrush = (Brush)Application.Current.Resources["BorderBrush2"],
                 BorderThickness = new Thickness(1),
                 Background = (Brush)Application.Current.Resources["CardBrush"]
@@ -131,15 +131,15 @@ namespace MovieBookRecommender.Views
             ContentPanel.Children.Add(new TextBlock
             {
                 Text = item.Title,
-                FontSize = 17,
+                FontSize = 15,
                 FontFamily = new FontFamily("Segoe UI Semibold"),
                 Foreground = (Brush)Application.Current.Resources["TextBrush"],
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 4)
+                Margin = new Thickness(0, 0, 0, 3)
             });
 
             // Мета-блок: Автор/Режиссёр, Жанр и год, Рейтинг
-            var metaStack = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+            var metaStack = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
 
             if (!string.IsNullOrWhiteSpace(item.Author))
             {
@@ -147,10 +147,10 @@ namespace MovieBookRecommender.Views
                 metaStack.Children.Add(new TextBlock
                 {
                     Text = $"{role}: {item.Author}",
-                    FontSize = 12,
+                    FontSize = 11.5,
                     Foreground = (Brush)Application.Current.Resources["TextBrush"],
                     FontWeight = FontWeights.Medium,
-                    Margin = new Thickness(0, 0, 0, 3)
+                    Margin = new Thickness(0, 0, 0, 2)
                 });
             }
 
@@ -159,22 +159,23 @@ namespace MovieBookRecommender.Views
             {
                 Text = metaText,
                 Style = (Style)Application.Current.Resources["SmallText"],
-                Margin = new Thickness(0, 0, 0, 4)
+                FontSize = 11.5,
+                Margin = new Thickness(0, 0, 0, 3)
             });
 
             var ratingRow = new StackPanel { Orientation = Orientation.Horizontal };
             ratingRow.Children.Add(new TextBlock
             {
                 Text = "★",
-                FontSize = 13,
+                FontSize = 12,
                 Foreground = (Brush)Application.Current.Resources["Accent2Brush"],
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 4, 0)
+                Margin = new Thickness(0, 0, 3, 0)
             });
             ratingRow.Children.Add(new TextBlock
             {
                 Text = $"{item.Rating:F1}",
-                FontSize = 13,
+                FontSize = 12,
                 FontFamily = new FontFamily("Segoe UI Semibold"),
                 Foreground = (Brush)Application.Current.Resources["Accent2Brush"],
                 VerticalAlignment = VerticalAlignment.Center
@@ -182,7 +183,7 @@ namespace MovieBookRecommender.Views
             ratingRow.Children.Add(new TextBlock
             {
                 Text = " / 10",
-                FontSize = 11,
+                FontSize = 10.5,
                 Foreground = (Brush)Application.Current.Resources["TextFaintBrush"],
                 VerticalAlignment = VerticalAlignment.Center
             });
@@ -190,15 +191,16 @@ namespace MovieBookRecommender.Views
 
             ContentPanel.Children.Add(metaStack);
 
-            // Описание
+            // Описание (компактное)
             ContentPanel.Children.Add(new TextBlock
             {
                 Text = item.Description,
                 Style = (Style)Application.Current.Resources["SmallText"],
+                FontSize = 11.5,
                 TextWrapping = TextWrapping.Wrap,
-                MaxHeight = 70,
+                MaxHeight = 52,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 0, 0, 14)
+                Margin = new Thickness(0, 0, 0, 10)
             });
 
             // Кнопка Смотреть / Читать
@@ -206,8 +208,10 @@ namespace MovieBookRecommender.Views
             {
                 Style = (Style)Application.Current.Resources["AccentButton"],
                 Content = item.Kind == MediaKind.Movie ? "▷  Смотреть" : "▷  Читать",
+                Height = 34,
+                Padding = new Thickness(14, 0, 14, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Margin = new Thickness(0, 0, 0, 8)
+                Margin = new Thickness(0, 0, 0, 6)
             };
             watchButton.Click += (_, _) => ExternalLinks.Open(item);
             ContentPanel.Children.Add(watchButton);
@@ -217,8 +221,10 @@ namespace MovieBookRecommender.Views
             {
                 Style = (Style)Application.Current.Resources["GhostButton"],
                 Content = FavText(item),
+                Height = 34,
+                Padding = new Thickness(14, 0, 14, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Margin = new Thickness(0, 0, 0, 16)
+                Margin = new Thickness(0, 0, 0, 12)
             };
             favButton.Click += (_, _) =>
             {
@@ -295,7 +301,7 @@ namespace MovieBookRecommender.Views
             else
             {
                 var similarGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 6) };
-                double cardWidth = 117;
+                double cardWidth = 104;
 
                 for (int i = 0; i < similar.Count; i++)
                 {
@@ -303,7 +309,7 @@ namespace MovieBookRecommender.Views
                     var card = new CardControl
                     {
                         Width = cardWidth,
-                        Margin = (i % 2 == 0) ? new Thickness(0, 0, 10, 0) : new Thickness(0, 0, 0, 0)
+                        Margin = (i % 2 == 0) ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 0, 0)
                     };
                     card.Initialize(sim, _data);
                     card.OpenRequested += m => OpenRequested?.Invoke(m);
@@ -378,7 +384,7 @@ namespace MovieBookRecommender.Views
 
             var itemsToShow = similar.Take(4).ToList();
             var moreGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 10) };
-            double cardWidth = 117;
+            double cardWidth = 104;
 
             for (int i = 0; i < itemsToShow.Count; i++)
             {
@@ -386,7 +392,7 @@ namespace MovieBookRecommender.Views
                 var card = new CardControl
                 {
                     Width = cardWidth,
-                    Margin = (i % 2 == 0) ? new Thickness(0, 0, 10, 12) : new Thickness(0, 0, 0, 12)
+                    Margin = (i % 2 == 0) ? new Thickness(0, 0, 8, 10) : new Thickness(0, 0, 0, 10)
                 };
                 card.Initialize(item, _data);
                 card.OpenRequested += it => OpenRequested?.Invoke(it);

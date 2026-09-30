@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -21,10 +22,30 @@ namespace MovieBookRecommender
         private string _currentPageKey = "home";
         private DispatcherTimer? _toastTimer;
 
-        private record NavigationEntry(string PageKey, MediaItem? DetailItem = null, string? SearchQuery = null, string? GenreFilter = null);
+        public class NavigationEntry
+        {
+            public string PageKey { get; }
+            public MediaItem? DetailItem { get; }
+            public string SourceTitle { get; set; } = "";
+            public ListPage.ListPageState? ListState { get; set; }
+            public FavoritesPage.FavoritesPageState? FavoritesState { get; set; }
+            public double ScrollOffset { get; set; }
+            public string? SearchQuery { get; set; }
+            public string? GenreFilter { get; set; }
+
+            public NavigationEntry(string pageKey, MediaItem? detailItem = null)
+            {
+                PageKey = pageKey;
+                DetailItem = detailItem;
+            }
+        }
+
         private readonly Stack<NavigationEntry> _history = new();
         private MediaItem? _currentDetailItem;
         public MediaItem? CurrentDetailItem => _currentDetailItem;
+
+        private UserControl? _currentVisiblePage;
+        private int _transitionToken = 0;
 
         public MainWindow()
         {
@@ -52,6 +73,10 @@ namespace MovieBookRecommender
             await EnsureAllPostersAsync();
             LoadingOverlay.Visibility = Visibility.Collapsed;
 
+            SidebarControl.ItemReselected += SidebarControl_ItemReselected;
+            PreviewKeyDown += MainWindow_PreviewKeyDown;
+            PreviewMouseDown += MainWindow_PreviewMouseDown;
+
             DetailsPanelControl.Initialize(_data);
             DetailsPanelControl.OpenRequested += OpenItem;
             DetailsPanelControl.RefreshRequested += ShowFeaturedDefault;
@@ -60,6 +85,41 @@ namespace MovieBookRecommender
             ShowPage("home");
 
             SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
+        }
+
+        private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            // Alt + Left Arrow для перехода назад
+            if (e.SystemKey == Key.Left && (Keyboard.Modifiers & ModifierKeys.Alt) != 0)
+            {
+                if (_currentPageKey == "detail" || _history.Count > 0)
+                {
+                    NavigateBack();
+                    e.Handled = true;
+                }
+            }
+            // Backspace назад, если фокус не в поле ввода текста
+            else if (e.Key == Key.Back && !(e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase))
+            {
+                if (_currentPageKey == "detail" || _history.Count > 0)
+                {
+                    NavigateBack();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void MainWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Аппаратная кнопка мыши «Назад» (XButton1)
+            if (e.ChangedButton == MouseButton.XButton1)
+            {
+                if (_currentPageKey == "detail" || _history.Count > 0)
+                {
+                    NavigateBack();
+                    e.Handled = true;
+                }
+            }
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -96,13 +156,199 @@ namespace MovieBookRecommender
 
         private void SidebarControl_Navigate(string key)
         {
-            _history.Clear();
             _currentDetailItem = null;
-            ShowPage(key);
+            ShowPage(key, clearHistory: false);
             ShowFeaturedDefault();
         }
 
-        public void ShowPage(string key, string? searchQuery = null, string? genreFilter = null, bool clearHistory = false)
+        private void SidebarControl_ItemReselected(string key)
+        {
+            // Если пользователь кликнул на уже активный пункт меню
+            if (_currentPageKey == "detail")
+            {
+                _currentDetailItem = null;
+                ShowPage(key);
+            }
+            else if (_pages.TryGetValue(key, out var page))
+            {
+                switch (page)
+                {
+                    case ListPage lp: lp.ScrollToTop(); break;
+                    case HomePage hp: hp.ScrollToTop(); break;
+                    case FavoritesPage fp: fp.ScrollToTop(); break;
+                    case DetailPage dp: dp.ScrollToTop(); break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Безупречный бесшовный переход между страницами (180ms fade) без мерцания и белых/чёрных вспышек.
+        /// Старый экран не удаляется мгновенно, а плавно растворяется под новым.
+        /// </summary>
+        private void TransitionToPage(UserControl newPage, string key)
+        {
+            _currentPageKey = key;
+            int token = ++_transitionToken;
+
+            if (_currentVisiblePage == newPage)
+            {
+                newPage.Opacity = 1.0;
+                newPage.Visibility = Visibility.Visible;
+                return;
+            }
+
+            var oldPage = _currentVisiblePage;
+            bool enableAnimations = _settings.Settings.EnableAnimations;
+
+            // Добавляем новую страницу в Grid без предварительной очистки, чтобы пользователь не видел пустой фон
+            if (!CenterHost.Children.Contains(newPage))
+            {
+                CenterHost.Children.Add(newPage);
+            }
+
+            Panel.SetZIndex(newPage, 1);
+            newPage.Visibility = Visibility.Visible;
+
+            if (!enableAnimations)
+            {
+                newPage.BeginAnimation(UIElement.OpacityProperty, null);
+                newPage.Opacity = 1.0;
+
+                if (oldPage != null && oldPage != newPage)
+                {
+                    oldPage.BeginAnimation(UIElement.OpacityProperty, null);
+                    CenterHost.Children.Remove(oldPage);
+                }
+
+                _currentVisiblePage = newPage;
+                return;
+            }
+
+            newPage.Opacity = 0.0;
+
+            var easeOut = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var easeIn = new QuadraticEase { EasingMode = EasingMode.EaseIn };
+
+            // Плавное появление новой страницы (180ms)
+            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = easeOut
+            };
+
+            // Параллельное затухание старой страницы (140ms)
+            if (oldPage != null && oldPage != newPage)
+            {
+                Panel.SetZIndex(oldPage, 0);
+                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(140))
+                {
+                    EasingFunction = easeIn
+                };
+                oldPage.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            }
+
+            fadeIn.Completed += (_, _) =>
+            {
+                if (token != _transitionToken) return;
+
+                newPage.BeginAnimation(UIElement.OpacityProperty, null);
+                newPage.Opacity = 1.0;
+
+                // Очищаем предыдущие страницы из визуального дерева контейнера
+                for (int i = CenterHost.Children.Count - 1; i >= 0; i--)
+                {
+                    var child = CenterHost.Children[i];
+                    if (child != newPage)
+                    {
+                        if (child is UIElement ui)
+                            ui.BeginAnimation(UIElement.OpacityProperty, null);
+                        CenterHost.Children.RemoveAt(i);
+                    }
+                }
+
+                _currentVisiblePage = newPage;
+            };
+
+            newPage.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        }
+
+        private NavigationEntry CaptureCurrentState()
+        {
+            var entry = new NavigationEntry(_currentPageKey, _currentDetailItem);
+
+            if (_currentPageKey == "detail" && _currentDetailItem != null)
+            {
+                if (_pages.TryGetValue("detail", out var dp) && dp is DetailPage detailPage)
+                {
+                    entry.ScrollOffset = detailPage.GetScrollOffset();
+                    entry.SourceTitle = detailPage.CurrentBreadcrumbSection;
+                }
+            }
+            else if (_currentPageKey is "movies" or "books")
+            {
+                entry.SourceTitle = _currentPageKey == "movies" ? "ФИЛЬМЫ" : "КНИГИ";
+                if (_pages.TryGetValue(_currentPageKey, out var lp) && lp is ListPage listPage)
+                {
+                    entry.ListState = listPage.GetCurrentState();
+                    entry.ScrollOffset = entry.ListState.ScrollOffset;
+                    entry.SearchQuery = entry.ListState.SearchText;
+                }
+            }
+            else if (_currentPageKey == "home")
+            {
+                entry.SourceTitle = "ГЛАВНАЯ";
+                if (_pages.TryGetValue("home", out var hp) && hp is HomePage homePage)
+                {
+                    entry.ScrollOffset = homePage.GetScrollOffset();
+                }
+            }
+            else if (_currentPageKey == "favorites")
+            {
+                entry.SourceTitle = "ИЗБРАННОЕ";
+                if (_pages.TryGetValue("favorites", out var fp) && fp is FavoritesPage favPage)
+                {
+                    entry.FavoritesState = favPage.GetCurrentState();
+                    entry.ScrollOffset = entry.FavoritesState.ScrollOffset;
+                }
+            }
+            else if (_currentPageKey == "settings")
+            {
+                entry.SourceTitle = "НАСТРОЙКИ";
+            }
+
+            return entry;
+        }
+
+        private void RestorePageState(UserControl page, NavigationEntry entry)
+        {
+            switch (page)
+            {
+                case ListPage lp:
+                    if (entry.ListState != null)
+                        lp.RestoreState(entry.ListState);
+                    else if (!string.IsNullOrEmpty(entry.GenreFilter))
+                        lp.SetGenreFilter(entry.GenreFilter!);
+                    else if (!string.IsNullOrEmpty(entry.SearchQuery))
+                        lp.SetSearchQuery(entry.SearchQuery!);
+                    else
+                        lp.Refresh();
+                    break;
+                case HomePage hp:
+                    hp.UpdateCardsFavoriteState();
+                    hp.RestoreScrollOffset(entry.ScrollOffset);
+                    break;
+                case FavoritesPage fp:
+                    if (entry.FavoritesState != null)
+                        fp.RestoreState(entry.FavoritesState);
+                    else
+                        fp.Refresh();
+                    break;
+                case SettingsPage sp:
+                    sp.UpdateFavoritesCount();
+                    break;
+            }
+        }
+
+        public void ShowPage(string key, string? searchQuery = null, string? genreFilter = null, bool clearHistory = false, NavigationEntry? restoreEntry = null)
         {
             if (clearHistory)
             {
@@ -114,38 +360,37 @@ namespace MovieBookRecommender
                 _pages[key] = CreatePage(key);
 
             var page = _pages[key];
-            page.Opacity = 0.0;
-            CenterHost.Children.Clear();
-            CenterHost.Children.Add(page);
-            _currentPageKey = key;
 
-            var pageFade = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
+            if (restoreEntry != null)
             {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            page.BeginAnimation(UIElement.OpacityProperty, pageFade);
-
-            switch (key)
-            {
-                case "movies" or "books" when !string.IsNullOrEmpty(genreFilter):
-                    ((ListPage)page).SetGenreFilter(genreFilter!);
-                    break;
-                case "movies" or "books" when !string.IsNullOrEmpty(searchQuery):
-                    ((ListPage)page).SetSearchQuery(searchQuery!);
-                    break;
-                case "movies" or "books":
-                    ((ListPage)page).Refresh();
-                    break;
-                case "home":
-                    ((HomePage)page).RefreshData();
-                    break;
-                case "favorites":
-                    ((FavoritesPage)page).Refresh();
-                    break;
-                case "settings":
-                    ((SettingsPage)page).UpdateFavoritesCount();
-                    break;
+                RestorePageState(page, restoreEntry);
             }
+            else
+            {
+                switch (key)
+                {
+                    case "movies" or "books" when !string.IsNullOrEmpty(genreFilter):
+                        ((ListPage)page).SetGenreFilter(genreFilter!);
+                        break;
+                    case "movies" or "books" when !string.IsNullOrEmpty(searchQuery):
+                        ((ListPage)page).SetSearchQuery(searchQuery!);
+                        break;
+                    case "movies" or "books":
+                        ((ListPage)page).Refresh();
+                        break;
+                    case "home":
+                        ((HomePage)page).RefreshData();
+                        break;
+                    case "favorites":
+                        ((FavoritesPage)page).Refresh();
+                        break;
+                    case "settings":
+                        ((SettingsPage)page).UpdateFavoritesCount();
+                        break;
+                }
+            }
+
+            TransitionToPage(page, key);
 
             SidebarControl.SetActive(key);
             SidebarControl.UpdateFavoritesBadge(_data.Favorites.Count);
@@ -204,26 +449,18 @@ namespace MovieBookRecommender
         {
             if (item == null) return;
 
-            // Запоминаем текущий экран/произведение в историю перехода
-            if (_currentPageKey == "detail" && _currentDetailItem != null)
-            {
-                _history.Push(new NavigationEntry("detail", _currentDetailItem));
-            }
-            else if (_currentPageKey != "detail")
-            {
-                _history.Push(new NavigationEntry(_currentPageKey));
-            }
+            var entry = CaptureCurrentState();
+            _history.Push(entry);
 
-            ShowDetailPage(item);
+            ShowDetailPage(item, fromSection: entry.SourceTitle);
         }
 
         /// <summary>
         /// Отображает детальный экран произведения на месте главной центральной области.
         /// </summary>
-        public void ShowDetailPage(MediaItem item, bool isBackNavigation = false)
+        public void ShowDetailPage(MediaItem item, bool isBackNavigation = false, double savedScrollOffset = 0, string fromSection = "")
         {
             _currentDetailItem = item;
-            _currentPageKey = "detail";
 
             if (!_pages.TryGetValue("detail", out var page) || page is not DetailPage detailPage)
             {
@@ -231,10 +468,14 @@ namespace MovieBookRecommender
                 _pages["detail"] = detailPage;
             }
 
-            detailPage.Initialize(item, _data, this);
+            detailPage.Initialize(item, _data, this, fromSection);
 
-            CenterHost.Children.Clear();
-            CenterHost.Children.Add(detailPage);
+            if (savedScrollOffset > 0)
+            {
+                detailPage.RestoreScrollOffset(savedScrollOffset);
+            }
+
+            TransitionToPage(detailPage, "detail");
 
             // Подсвечиваем в боковом меню раздел (Фильмы или Книги)
             SidebarControl.SetActive(item.Kind == MediaKind.Movie ? "movies" : "books");
@@ -253,18 +494,20 @@ namespace MovieBookRecommender
                 var prev = _history.Pop();
                 if (prev.PageKey == "detail" && prev.DetailItem != null)
                 {
-                    ShowDetailPage(prev.DetailItem, isBackNavigation: true);
+                    ShowDetailPage(prev.DetailItem, isBackNavigation: true, savedScrollOffset: prev.ScrollOffset, fromSection: prev.SourceTitle);
                 }
                 else
                 {
-                    ShowPage(prev.PageKey, searchQuery: prev.SearchQuery, genreFilter: prev.GenreFilter, clearHistory: false);
+                    _currentDetailItem = null;
+                    ShowPage(prev.PageKey, searchQuery: prev.SearchQuery, genreFilter: prev.GenreFilter, clearHistory: false, restoreEntry: prev);
                     ShowFeaturedDefault();
                 }
             }
             else
             {
-                // Fallback если истории нет
+                // Fallback если истории нет: возвращаемся в соответствующий каталог (Фильмы или Книги), а не всегда на главную!
                 var fallbackKey = _currentDetailItem?.Kind == MediaKind.Book ? "books" : "movies";
+                _currentDetailItem = null;
                 ShowPage(fallbackKey, clearHistory: false);
                 ShowFeaturedDefault();
             }

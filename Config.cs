@@ -16,7 +16,7 @@ namespace MovieBookRecommender
     /// </summary>
     public static class Config
     {
-        public static readonly string TmdbApiKey = "";
+        public static readonly string TmdbApiKey = "6a4f66adec55b3608261b4e118fab95f";
 
         /// <summary>Если false — оба онлайн-источника отключены,
         /// всегда используются сгенерированные заглушки.</summary>

@@ -23,8 +23,8 @@ namespace MovieBookRecommender.Views
 
         private string _currentFilter = "all";
         private List<MediaItem> _currentDisplayedItems = new();
-        private double _currentCardWidth = 180;
-        private const double CardGap = 14;
+        private int _currentColumns = -1;
+        private const double CardGap = 16.0;
 
         public FavoritesPage()
         {
@@ -40,6 +40,54 @@ namespace MovieBookRecommender.Views
             Refresh();
         }
 
+        public class FavoritesPageState
+        {
+            public string Filter { get; set; } = "all";
+            public string SearchText { get; set; } = "";
+            public int SortIndex { get; set; }
+            public double ScrollOffset { get; set; }
+        }
+
+        public FavoritesPageState GetCurrentState()
+        {
+            return new FavoritesPageState
+            {
+                Filter = _currentFilter,
+                SearchText = SearchBox?.Text ?? "",
+                SortIndex = SortCombo?.SelectedIndex ?? 0,
+                ScrollOffset = PageScroll?.VerticalOffset ?? 0
+            };
+        }
+
+        public void RestoreState(FavoritesPageState state)
+        {
+            if (state == null) return;
+
+            _currentFilter = state.Filter;
+            UpdateFilterButtonStyles();
+
+            if (SearchBox != null)
+                SearchBox.Text = state.SearchText;
+
+            if (SortCombo != null && state.SortIndex >= 0 && state.SortIndex < SortCombo.Items.Count)
+                SortCombo.SelectedIndex = state.SortIndex;
+
+            Refresh();
+
+            if (state.ScrollOffset > 0)
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+                {
+                    PageScroll?.ScrollToVerticalOffset(state.ScrollOffset);
+                }));
+            }
+        }
+
+        public void ScrollToTop()
+        {
+            PageScroll?.ScrollToTop();
+        }
+
         public void Refresh()
         {
             if (_data == null) return;
@@ -50,7 +98,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Статистика и инсайт предпочтений (Разделы 2, 14, 15)
+        // Статистика и инсайт предпочтений вкуса
         // ------------------------------------------------------------------
         private void UpdateStatisticsAndInsight()
         {
@@ -63,7 +111,7 @@ namespace MovieBookRecommender.Views
             AnimateNumberChange(MoviesCountText, MoviesScale, movieCount);
             AnimateNumberChange(BooksCountText, BooksScale, bookCount);
 
-            // Инсайт вкуса на основе реального частотного анализа жанров (Раздел 15)
+            // Инсайт вкуса на основе реального частотного анализа жанров
             if (totalCount == 0)
             {
                 InsightBodyText.Text = "Добавляйте фильмы и книги в избранное, чтобы сформировать персональный профиль вкусов.";
@@ -93,11 +141,11 @@ namespace MovieBookRecommender.Views
                 if (topGenres.Count > 0)
                 {
                     var genresStr = string.Join(", ", topGenres);
-                    InsightBodyText.Text = $"Похоже, вам нравится: {genresStr}. На основе этого мы формируем подборку рекомендаций.";
+                    InsightBodyText.Text = $"Похоже, вам нравится: {genresStr}. На основе этого мы формируем персональную подборку рекомендаций.";
                 }
                 else
                 {
-                    InsightBodyText.Text = "Ваша коллекция растёт! Рекомендации адаптируются под ваши оценки.";
+                    InsightBodyText.Text = "Ваша коллекция растёт! Рекомендации адаптируются под ваши предпочтения.";
                 }
             }
         }
@@ -127,7 +175,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Переключатель [ Все ] [ Фильмы ] [ Книги ] (Раздел 3)
+        // Переключатель [ Все ] [ Фильмы ] [ Книги ]
         // ------------------------------------------------------------------
         private void FilterBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -142,26 +190,25 @@ namespace MovieBookRecommender.Views
         private void UpdateFilterButtonStyles()
         {
             var accentBrush = (Brush)Application.Current.Resources["AccentBrush"];
-            var textBrush = (Brush)Application.Current.Resources["TextBrush"];
             var textMuted = (Brush)Application.Current.Resources["TextMutedBrush"];
             var transparent = Brushes.Transparent;
 
-            SetSegmentState(FilterAllBtn, _currentFilter == "all", accentBrush, textBrush, textMuted, transparent);
-            SetSegmentState(FilterMoviesBtn, _currentFilter == "movies", accentBrush, textBrush, textMuted, transparent);
-            SetSegmentState(FilterBooksBtn, _currentFilter == "books", accentBrush, textBrush, textMuted, transparent);
+            SetSegmentState(FilterAllBtn, _currentFilter == "all", accentBrush, textMuted, transparent);
+            SetSegmentState(FilterMoviesBtn, _currentFilter == "movies", accentBrush, textMuted, transparent);
+            SetSegmentState(FilterBooksBtn, _currentFilter == "books", accentBrush, textMuted, transparent);
         }
 
-        private static void SetSegmentState(Button btn, bool isActive, Brush accentBrush, Brush activeText, Brush inactiveText, Brush transparent)
+        private static void SetSegmentState(Button btn, bool isActive, Brush accentBrush, Brush inactiveText, Brush transparent)
         {
             if (btn == null) return;
+            btn.Tag = isActive ? "Active" : "Normal";
             btn.Background = isActive ? accentBrush : transparent;
             btn.Foreground = isActive ? Brushes.White : inactiveText;
-            btn.BorderThickness = new Thickness(0);
             btn.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
         // ------------------------------------------------------------------
-        // Поиск в избранном (Раздел 4)
+        // Поиск в избранном
         // ------------------------------------------------------------------
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -170,8 +217,24 @@ namespace MovieBookRecommender.Views
 
             if (ClearSearchBtn != null)
             {
-                ClearSearchBtn.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
-                ClearSearchBtn.Opacity = hasText ? 1.0 : 0.0;
+                if (hasText)
+                {
+                    if (ClearSearchBtn.Visibility != Visibility.Visible)
+                    {
+                        ClearSearchBtn.Visibility = Visibility.Visible;
+                        ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty,
+                            new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150)));
+                    }
+                }
+                else
+                {
+                    if (ClearSearchBtn.Visibility == Visibility.Visible)
+                    {
+                        var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(150));
+                        fadeOut.Completed += (_, _) => ClearSearchBtn.Visibility = Visibility.Collapsed;
+                        ClearSearchBtn.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                    }
+                }
             }
 
             ApplyFilterAndSort();
@@ -179,12 +242,20 @@ namespace MovieBookRecommender.Views
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+            var accent = (SolidColorBrush)Application.Current.Resources["AccentBrush"];
+            SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                new ColorAnimation(accent.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(180)));
         }
 
         private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            SearchBoxContainer.BorderBrush = (Brush)Application.Current.Resources["BorderSubtleBrush"];
+            var borderSubtle = (SolidColorBrush)Application.Current.Resources["BorderSubtleBrush"];
+            SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty,
+                new ColorAnimation(borderSubtle.Color, TimeSpan.FromMilliseconds(180)));
+            SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0.8, TimeSpan.FromMilliseconds(180)));
         }
 
         private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
@@ -194,7 +265,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Сортировка (Раздел 5)
+        // Сортировка
         // ------------------------------------------------------------------
         private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -259,22 +330,20 @@ namespace MovieBookRecommender.Views
         {
             CardsPanel.Children.Clear();
 
-            var availableWidth = PageScroll.ActualWidth - 96;
-            if (availableWidth <= 0) availableWidth = 800;
-
+            var availableWidth = PageScroll.ActualWidth > 0 ? PageScroll.ActualWidth - 64 : 800;
             var columns = CalculateColumns(availableWidth);
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
-            _currentCardWidth = widthPerCard;
+            CardsPanel.Columns = columns;
+            _currentColumns = columns;
+            var halfGap = CardGap / 2.0;
 
             for (int i = 0; i < items.Count; i++)
             {
                 var it = items[i];
                 var card = new CardControl
                 {
-                    Width = widthPerCard,
-                    Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, CardGap)
-                        : new Thickness(0, 0, CardGap, CardGap),
+                    Width = double.NaN,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Margin = new Thickness(halfGap, 0, halfGap, CardGap),
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(1.0, 1.0)
                 };
@@ -298,14 +367,14 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Плавное удаление карточки (Раздел 6 & 7)
+        // Плавное удаление карточки из коллекции
         // ------------------------------------------------------------------
         private void OnCardFavoriteToggled(CardControl card, MediaItem item)
         {
             var isFav = _data.IsFavorite(item.Id);
             if (!isFav)
             {
-                // Карточка удалена: запускаем плавное исчезновение (opacity 1 -> 0, scale 1 -> 0.96)
+                // Карточка удалена: запускаем плавное исчезновение (opacity 1 -> 0, scale 1 -> 0.95)
                 var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(160));
                 var scaleAnim = new DoubleAnimation(1.0, 0.95, TimeSpan.FromMilliseconds(160));
 
@@ -343,7 +412,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Настройка Empty States (Разделы 8 & 9)
+        // Настройка состояний Empty State
         // ------------------------------------------------------------------
         private void ShowAppropriateEmptyState(int totalFavCount, string query)
         {
@@ -352,10 +421,10 @@ namespace MovieBookRecommender.Views
 
             if (totalFavCount == 0)
             {
-                // Всё избранное полностью пустое (Раздел 8)
+                // Всё избранное полностью пустое
                 EmptyStateIcon.Data = (Geometry)Application.Current.Resources["IconHeart"];
                 EmptyStateTitle.Text = "Здесь пока пусто";
-                EmptyStateSubtitle.Text = "Добавляйте фильмы и книги в избранное, чтобы собрать свою коллекцию.";
+                EmptyStateSubtitle.Text = "Добавляйте фильмы и книги в избранное, чтобы собрать свою личную коллекцию и получать точные рекомендации.";
 
                 EmptyGoMoviesBtn.Visibility = Visibility.Visible;
                 EmptyGoMoviesBtn.Content = "Найти фильм";
@@ -365,10 +434,10 @@ namespace MovieBookRecommender.Views
             }
             else if (!string.IsNullOrWhiteSpace(query))
             {
-                // Поиск ничего не нашёл (Раздел 9)
+                // Поиск ничего не нашёл
                 EmptyStateIcon.Data = (Geometry)Application.Current.Resources["IconSearch"];
                 EmptyStateTitle.Text = "Ничего не найдено";
-                EmptyStateSubtitle.Text = "Попробуйте изменить поисковый запрос или выбрать другой тип.";
+                EmptyStateSubtitle.Text = "Попробуйте изменить поисковый запрос или выбрать другую категорию.";
 
                 EmptyGoMoviesBtn.Visibility = Visibility.Collapsed;
                 EmptyGoBooksBtn.Visibility = Visibility.Collapsed;
@@ -376,10 +445,10 @@ namespace MovieBookRecommender.Views
             }
             else if (_currentFilter == "movies")
             {
-                // Нет фильмов в избранном (Раздел 9)
+                // Нет фильмов в избранном
                 EmptyStateIcon.Data = (Geometry)Application.Current.Resources["IconFilm"];
                 EmptyStateTitle.Text = "В избранном пока нет фильмов";
-                EmptyStateSubtitle.Text = "Вы пока не сохранили ни одного фильма в свою коллекцию.";
+                EmptyStateSubtitle.Text = "Вы пока не сохранили ни одного фильма в свою личную коллекцию.";
 
                 EmptyGoMoviesBtn.Visibility = Visibility.Visible;
                 EmptyGoMoviesBtn.Content = "Перейти к фильмам";
@@ -388,10 +457,10 @@ namespace MovieBookRecommender.Views
             }
             else if (_currentFilter == "books")
             {
-                // Нет книг в избранном (Раздел 9)
+                // Нет книг в избранном
                 EmptyStateIcon.Data = (Geometry)Application.Current.Resources["IconBook"];
                 EmptyStateTitle.Text = "В избранном пока нет книг";
-                EmptyStateSubtitle.Text = "Вы пока не сохранили ни одной книги в свою коллекцию.";
+                EmptyStateSubtitle.Text = "Вы пока не сохранили ни одной книги в свою личную коллекцию.";
 
                 EmptyGoMoviesBtn.Visibility = Visibility.Collapsed;
                 EmptyGoBooksBtn.Visibility = Visibility.Visible;
@@ -417,7 +486,7 @@ namespace MovieBookRecommender.Views
 
         // ------------------------------------------------------------------
         // Персональные рекомендации внизу «На основе вашего избранного»
-        // (Разделы 10 & 11) - Исключение дубликатов гарантировано!
+        // Выравнены с основной сеткой карточек
         // ------------------------------------------------------------------
         private void BuildRecommendations()
         {
@@ -434,12 +503,10 @@ namespace MovieBookRecommender.Views
             RecommendationsSection.Visibility = Visibility.Visible;
             RecsGrid.Children.Clear();
 
-            var availableWidth = PageScroll.ActualWidth > 0 ? PageScroll.ActualWidth - 96 : 800;
+            var availableWidth = PageScroll.ActualWidth > 0 ? PageScroll.ActualWidth - 64 : 800;
             var columns = CalculateColumns(availableWidth);
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
-            _currentCardWidth = widthPerCard;
-
             RecsGrid.Columns = columns;
+            var halfGap = CardGap / 2.0;
 
             // Персонализированный фид на основе жанров избранного, строго БЕЗ элементов из избранного
             var recs = RecommendationService.BuildPersonalizedFeed(_data.AllItems(), favIds, limit: columns);
@@ -449,10 +516,9 @@ namespace MovieBookRecommender.Views
                 var it = recs[i];
                 var card = new CardControl
                 {
-                    Width = widthPerCard,
-                    Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, CardGap, 16)
+                    Width = double.NaN,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Margin = new Thickness(halfGap, 0, halfGap, 16)
                 };
                 card.Initialize(it, _data);
 
@@ -471,7 +537,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Адаптивность при изменении размера окна (Раздел 17)
+        // Адаптивность при изменении размера окна
         // ------------------------------------------------------------------
         private static int CalculateColumns(double width)
         {
@@ -483,7 +549,7 @@ namespace MovieBookRecommender.Views
 
         private void PageScroll_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 96));
+            ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 64));
         }
 
         private void ApplyResponsiveWidth(double availableWidth)
@@ -491,35 +557,18 @@ namespace MovieBookRecommender.Views
             if (availableWidth <= 0) return;
 
             var columns = CalculateColumns(availableWidth);
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
-            _currentCardWidth = widthPerCard;
+            if (columns == _currentColumns) return;
+            _currentColumns = columns;
+
+            if (CardsPanel != null)
+                CardsPanel.Columns = columns;
 
             if (RecsGrid != null)
             {
                 RecsGrid.Columns = columns;
-                for (int i = 0; i < RecsGrid.Children.Count; i++)
+                if (RecsGrid.Children.Count > 0 && RecsGrid.Children.Count != columns)
                 {
-                    if (RecsGrid.Children[i] is CardControl card)
-                    {
-                        card.Width = widthPerCard;
-                        card.Margin = ((i + 1) % columns == 0)
-                            ? new Thickness(0, 0, 0, 16)
-                            : new Thickness(0, 0, CardGap, 16);
-                    }
-                }
-            }
-
-            if (CardsPanel != null)
-            {
-                for (int i = 0; i < CardsPanel.Children.Count; i++)
-                {
-                    if (CardsPanel.Children[i] is CardControl card)
-                    {
-                        card.Width = widthPerCard;
-                        card.Margin = ((i + 1) % columns == 0)
-                            ? new Thickness(0, 0, 0, CardGap)
-                            : new Thickness(0, 0, CardGap, CardGap);
-                    }
+                    BuildRecommendations();
                 }
             }
         }

@@ -10,7 +10,7 @@ namespace MovieBookRecommender.Views
     /// Страница настроек приложения:
     /// 1. Внешний вид (Тема оформления и Масштаб интерфейса).
     /// 2. Приложение (Автосохранение и Анимации с ToggleSwitch).
-    /// 3. Данные (Динамический счётчик избранного и безопасная очистка с встроенным диалогом).
+    /// 3. Данные (Динамический счётчик избранного и изолированная опасная зона с подтверждением).
     /// 4. О приложении (версия 2.0, архитектура, JSON).
     /// </summary>
     public partial class SettingsPage : UserControl
@@ -19,6 +19,7 @@ namespace MovieBookRecommender.Views
         private MainWindow _app = null!;
         private SettingsManager _settingsManager = null!;
         private bool _initialized;
+        private bool _isTwoColumnLayout = true;
 
         public SettingsPage()
         {
@@ -111,7 +112,7 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Очистка избранного с подтверждением (Разделы 6, 7, 12)
+        // Очистка избранного с подтверждением (Опасная зона)
         // ------------------------------------------------------------------
         private void OpenClearDialog_Click(object sender, RoutedEventArgs e)
         {
@@ -152,5 +153,40 @@ namespace MovieBookRecommender.Views
             _app.OnFavoriteChanged(null);
             _app.ShowToast("Избранное очищено", "✓");
         }
+
+        // ------------------------------------------------------------------
+        // Адаптивная вёрстка (две колонки на десктопе, одна на узких экранах)
+        // ------------------------------------------------------------------
+        private void PageScroll_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateResponsiveLayout(e.NewSize.Width);
+        }
+
+        private void UpdateResponsiveLayout(double availableWidth)
+        {
+            if (SettingsGrid == null || LeftCol == null || RightCol == null || GapCol == null || RightPanel == null) return;
+
+            bool shouldBeTwoColumn = availableWidth >= 860;
+            if (shouldBeTwoColumn == _isTwoColumnLayout) return;
+            _isTwoColumnLayout = shouldBeTwoColumn;
+
+            if (shouldBeTwoColumn)
+            {
+                GapCol.Width = new GridLength(18);
+                RightCol.Width = new GridLength(1, GridUnitType.Star);
+                Grid.SetColumn(RightPanel, 2);
+                Grid.SetRow(RightPanel, 0);
+                RightPanel.Margin = new Thickness(0);
+            }
+            else
+            {
+                GapCol.Width = new GridLength(0);
+                RightCol.Width = new GridLength(0);
+                Grid.SetColumn(RightPanel, 0);
+                Grid.SetRow(RightPanel, 1);
+                RightPanel.Margin = new Thickness(0, 16, 0, 0);
+            }
+        }
     }
 }
+

@@ -4,7 +4,8 @@
              Width="180" Background="{StaticResource SidebarBrush}">
     <DockPanel LastChildFill="True">
 
-        <StackPanel DockPanel.Dock="Top" Margin="16,20,12,20">
+        <StackPanel x:Name="BrandHeader" DockPanel.Dock="Top" Margin="16,20,12,20"
+                    Cursor="Hand" ToolTip="На главную" MouseLeftButtonUp="BrandHeader_MouseLeftButtonUp">
             <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource AccentGradient}" Margin="0,0,0,10">
                 <Path Data="{StaticResource IconFilm}" Fill="White" Width="14" Height="14" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>

@@ -3,214 +3,319 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:MovieBookRecommender.Views"
              Background="{StaticResource BgBrush}">
+
+    <UserControl.Resources>
+        <!-- Стилизованная кнопка сегментированного переключателя -->
+        <Style x:Key="SegmentButton" TargetType="Button">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="Tag" Value="Normal"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#2A2026"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для карточки статистики с мягким hover -->
+        <Style x:Key="StatPillBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="MinWidth" Value="94"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush2}"/>
+                    <Setter Property="Background" Value="#1A1418"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer x:Name="PageScroll"
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   SizeChanged="PageScroll_SizeChanged">
-        <StackPanel Margin="48,28,48,40">
+        <StackPanel Margin="32,20,32,28">
 
             <!-- ВЕРХНИЙ ЗАГОЛОВОК -->
-            <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Избранное" Style="{StaticResource H1}" Margin="0,0,0,6"/>
-                <TextBlock Text="Ваша личная коллекция фильмов и книг" Style="{StaticResource BodyText}" Opacity="0.8"/>
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="Избранное" Style="{StaticResource H1}" FontSize="26" Margin="0,0,0,3"/>
+                <TextBlock Text="Ваша личная коллекция сохранённых фильмов и книг" Style="{StaticResource BodyText}" FontSize="12.5" Opacity="0.8"/>
             </StackPanel>
 
-            <!-- БЛОК СТАТИСТИКИ И ИНСАЙТА ВКУСА -->
+            <!-- БЛОК СТАТИСТИКИ И ИНСАЙТА ВКУСА (ЕДИНЫЙ КОМПАКТНЫЙ БАННЕР КОЛЛЕКЦИИ) -->
             <Border Background="{StaticResource CardBrush}"
                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                    CornerRadius="14" Padding="24,18" Margin="0,0,0,24">
+                    CornerRadius="12" Padding="14,10" Margin="0,0,0,16">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <!-- Числовые счётчики -->
+                        <!-- 3 компактные плитки статистики -->
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="32"/>
+                        <!-- Тонкий разделитель -->
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="32"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <!-- Разделитель -->
-                        <ColumnDefinition Width="36"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="36"/>
-                        <!-- Блок вкуса / Инсайт -->
+                        <!-- Инсайт предпочтений вкуса -->
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Всего -->
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="ВСЕГО" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="TotalCountText" Text="0" FontSize="26" FontFamily="Segoe UI Semibold"
-                                   Foreground="{StaticResource Accent2Brush}" RenderTransformOrigin="0.5,0.5">
-                            <TextBlock.RenderTransform>
-                                <ScaleTransform x:Name="TotalScale" ScaleX="1" ScaleY="1"/>
-                            </TextBlock.RenderTransform>
-                        </TextBlock>
+                    <!-- Статистика: Всего, Фильмы, Книги -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Всего -->
+                        <Border Style="{StaticResource StatPillBorder}" Margin="0,0,8,0">
+                            <StackPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                    <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource Accent2Brush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="ВСЕГО" Style="{StaticResource Eyebrow}" FontSize="9.5" Foreground="{StaticResource TextMutedBrush}"/>
+                                </StackPanel>
+                                <TextBlock x:Name="TotalCountText" Text="0" FontSize="20" FontFamily="Segoe UI Bold"
+                                           Foreground="{StaticResource Accent2Brush}" RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform x:Name="TotalScale" ScaleX="1" ScaleY="1"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Фильмы -->
+                        <Border Style="{StaticResource StatPillBorder}" Margin="0,0,8,0">
+                            <StackPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                    <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource AccentBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="ФИЛЬМЫ" Style="{StaticResource Eyebrow}" FontSize="9.5" Foreground="{StaticResource TextMutedBrush}"/>
+                                </StackPanel>
+                                <TextBlock x:Name="MoviesCountText" Text="0" FontSize="20" FontFamily="Segoe UI Bold"
+                                           Foreground="{StaticResource TextBrush}" RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform x:Name="MoviesScale" ScaleX="1" ScaleY="1"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Книги -->
+                        <Border Style="{StaticResource StatPillBorder}">
+                            <StackPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                    <Border Width="6" Height="6" CornerRadius="3" Background="#5B8DEF" Margin="0,0,6,0"/>
+                                    <TextBlock Text="КНИГИ" Style="{StaticResource Eyebrow}" FontSize="9.5" Foreground="{StaticResource TextMutedBrush}"/>
+                                </StackPanel>
+                                <TextBlock x:Name="BooksCountText" Text="0" FontSize="20" FontFamily="Segoe UI Bold"
+                                           Foreground="{StaticResource TextBrush}" RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform x:Name="BooksScale" ScaleX="1" ScaleY="1"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <!-- Фильмы -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Text="ФИЛЬМЫ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="MoviesCountText" Text="0" FontSize="26" FontFamily="Segoe UI Semibold"
-                                   Foreground="{StaticResource TextBrush}" RenderTransformOrigin="0.5,0.5">
-                            <TextBlock.RenderTransform>
-                                <ScaleTransform x:Name="MoviesScale" ScaleX="1" ScaleY="1"/>
-                            </TextBlock.RenderTransform>
-                        </TextBlock>
-                    </StackPanel>
+                    <!-- Тонкий вертикальный разделитель -->
+                    <Border Grid.Column="1" Width="1" Background="{StaticResource BorderBrush2}" Height="38" VerticalAlignment="Center" Margin="14,0"/>
 
-                    <!-- Книги -->
-                    <StackPanel Grid.Column="4" VerticalAlignment="Center">
-                        <TextBlock Text="КНИГИ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="BooksCountText" Text="0" FontSize="26" FontFamily="Segoe UI Semibold"
-                                   Foreground="{StaticResource TextBrush}" RenderTransformOrigin="0.5,0.5">
-                            <TextBlock.RenderTransform>
-                                <ScaleTransform x:Name="BooksScale" ScaleX="1" ScaleY="1"/>
-                            </TextBlock.RenderTransform>
-                        </TextBlock>
-                    </StackPanel>
+                    <!-- Инсайт вкуса / предпочтений -->
+                    <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <!-- Вертикальная линия -->
-                    <Border Grid.Column="6" Background="{StaticResource BorderBrush2}" Height="48" VerticalAlignment="Center"/>
-
-                    <!-- Инсайт предпочтений -->
-                    <StackPanel Grid.Column="8" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
-                            <Path Data="{StaticResource IconStar}" Fill="{StaticResource Accent2Brush}" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock Text="ВАШИ ПРЕДПОЧТЕНИЯ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                <Path Data="{StaticResource IconStar}" Fill="{StaticResource Accent2Brush}" Width="10.5" Height="10.5" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="ВАШИ ПРЕДПОЧТЕНИЯ" Style="{StaticResource Eyebrow}" FontSize="10" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="InsightBodyText"
+                                       Text="Добавьте ещё несколько произведений, чтобы рекомендации стали точнее."
+                                       Style="{StaticResource BodyText}" FontSize="12.5" LineHeight="17" TextWrapping="Wrap" Opacity="0.85"/>
                         </StackPanel>
-                        <TextBlock x:Name="InsightBodyText"
-                                   Text="Добавьте ещё несколько произведений, чтобы рекомендации стали точнее."
-                                   Style="{StaticResource BodyText}" FontSize="13" TextWrapping="Wrap" Opacity="0.85"/>
-                    </StackPanel>
+
+                        <!-- Декоративная иконка палитры вкусов справа -->
+                        <Border Grid.Column="1" Width="36" Height="36" CornerRadius="18"
+                                Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                                Margin="14,0,2,0" VerticalAlignment="Center" Opacity="0.75">
+                            <Path Data="{StaticResource IconPalette}" Fill="{StaticResource Accent2Brush}" Width="15" Height="15" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Border>
 
-            <!-- ПАНЕЛЬ УПРАВЛЕНИЯ: ПЕРЕКЛЮЧАТЕЛЬ + ПОИСК + СОРТИРОВКА -->
+            <!-- ПАНЕЛЬ УПРАВЛЕНИЯ: ПЕРЕКЛЮЧАТЕЛЬ + ПОИСК + СОРТИРОВКА (ЕДИНАЯ АККУРАТНАЯ СТРОКА) -->
             <Border Background="{StaticResource CardBrush}"
                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                    CornerRadius="12" Padding="14,10" Margin="0,0,0,24">
-                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    CornerRadius="10" Padding="12,8" Margin="0,0,0,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                    <!-- Переключатель типа: [ Все ] [ Фильмы ] [ Книги ] -->
-                    <Border Background="{StaticResource BgBrush}"
-                            BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                            CornerRadius="8" Padding="3" Margin="0,0,16,0" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="FilterAllBtn" Content="Все"
-                                    Height="32" Padding="14,0" Cursor="Hand"
-                                    Click="FilterBtn_Click"/>
-                            <Button x:Name="FilterMoviesBtn" Content="Фильмы"
-                                    Height="32" Padding="14,0" Cursor="Hand" Margin="2,0,0,0"
-                                    Click="FilterBtn_Click"/>
-                            <Button x:Name="FilterBooksBtn" Content="Книги"
-                                    Height="32" Padding="14,0" Cursor="Hand" Margin="2,0,0,0"
-                                    Click="FilterBtn_Click"/>
-                        </StackPanel>
-                    </Border>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Переключатель типа: [ Все ] [ Фильмы ] [ Книги ] -->
+                        <Border Background="{StaticResource BgBrush}"
+                                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                                CornerRadius="8" Padding="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="FilterAllBtn" Content="Все"
+                                        Style="{StaticResource SegmentButton}"
+                                        Click="FilterBtn_Click"/>
+                                <Button x:Name="FilterMoviesBtn" Content="Фильмы"
+                                        Style="{StaticResource SegmentButton}"
+                                        Margin="2,0,0,0"
+                                        Click="FilterBtn_Click"/>
+                                <Button x:Name="FilterBooksBtn" Content="Книги"
+                                        Style="{StaticResource SegmentButton}"
+                                        Margin="2,0,0,0"
+                                        Click="FilterBtn_Click"/>
+                            </StackPanel>
+                        </Border>
 
-                    <!-- Поисковая строка в избранном -->
-                    <Border x:Name="SearchBoxContainer"
-                            Background="{StaticResource BgBrush}"
-                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                            CornerRadius="8" Width="260" Height="36"
-                            VerticalAlignment="Center" Margin="0,0,16,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Path Data="{StaticResource IconSearch}" Fill="{StaticResource TextFaintBrush}"
-                                  Width="13" Height="13" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="10,0,7,0"/>
-                            <Grid Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock x:Name="SearchPlaceholder" Text="Поиск в избранном..."
-                                           Foreground="{StaticResource TextFaintBrush}" FontSize="12"
-                                           IsHitTestVisible="False" VerticalAlignment="Center" Margin="2,0,0,0"/>
-                                <TextBox x:Name="SearchBox"
-                                         Style="{StaticResource SearchBox}"
-                                         FontSize="12" Padding="2,0"
-                                         VerticalAlignment="Center"
-                                         TextChanged="SearchBox_TextChanged"
-                                         GotFocus="SearchBox_GotFocus"
-                                         LostFocus="SearchBox_LostFocus"/>
+                        <!-- Тонкий вертикальный разделитель -->
+                        <Border Width="1" Height="20" Background="{StaticResource BorderBrush2}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                        <!-- Поисковая строка в избранном -->
+                        <Border x:Name="SearchBoxContainer"
+                                Background="{StaticResource BgBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7" Width="230" Height="34"
+                                VerticalAlignment="Center" Margin="0,0,12,0">
+                            <Border.BorderBrush>
+                                <SolidColorBrush x:Name="SearchBorderBrush" Color="#2A2026"/>
+                            </Border.BorderBrush>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Path Data="{StaticResource IconSearch}" Fill="{StaticResource TextFaintBrush}"
+                                      Width="13" Height="13" Stretch="Uniform"
+                                      VerticalAlignment="Center" Margin="10,0,7,0"/>
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="SearchPlaceholder" Text="Поиск в коллекции..."
+                                               Foreground="{StaticResource TextFaintBrush}" FontSize="12"
+                                               IsHitTestVisible="False" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                    <TextBox x:Name="SearchBox"
+                                             Style="{StaticResource SearchBox}"
+                                             FontSize="12" Padding="2,0"
+                                             VerticalAlignment="Center"
+                                             TextChanged="SearchBox_TextChanged"
+                                             GotFocus="SearchBox_GotFocus"
+                                             LostFocus="SearchBox_LostFocus"/>
+                                </Grid>
+                                <Button x:Name="ClearSearchBtn" Grid.Column="2"
+                                        Style="{StaticResource GhostButton}"
+                                        Width="22" Height="22" Padding="0"
+                                        VerticalAlignment="Center" Margin="0,0,5,0"
+                                        Visibility="Collapsed" Opacity="0"
+                                        Click="ClearSearchBtn_Click">
+                                    <Path Data="{StaticResource IconClose}" Fill="{StaticResource TextMutedBrush}"
+                                          Width="8.5" Height="8.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
                             </Grid>
-                            <Button x:Name="ClearSearchBtn" Grid.Column="2"
-                                    Style="{StaticResource GhostButton}"
-                                    Width="22" Height="22" Padding="0"
-                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                    Visibility="Collapsed" Opacity="0"
-                                    Click="ClearSearchBtn_Click">
-                                <Path Data="{StaticResource IconClose}" Fill="{StaticResource TextMutedBrush}"
-                                      Width="9" Height="9" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-                        </Grid>
-                    </Border>
+                        </Border>
 
-                    <!-- Сортировка -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="СОРТИРОВКА" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <ComboBox x:Name="SortCombo" Style="{StaticResource DarkCombo}" Width="160"
-                                  SelectionChanged="SortCombo_SelectionChanged">
-                            <ComboBoxItem Content="По умолчанию" IsSelected="True"/>
-                            <ComboBoxItem Content="По рейтингу (убыв.)"/>
-                            <ComboBoxItem Content="По названию (А-Я)"/>
-                        </ComboBox>
+                        <!-- Тонкий вертикальный разделитель -->
+                        <Border Width="1" Height="20" Background="{StaticResource BorderBrush2}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                        <!-- Сортировка -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="СОРТИРОВКА" Style="{StaticResource Eyebrow}" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="SortCombo" Style="{StaticResource DarkCombo}" Height="34" Width="170"
+                                      SelectionChanged="SortCombo_SelectionChanged">
+                                <ComboBoxItem Content="По умолчанию" IsSelected="True"/>
+                                <ComboBoxItem Content="По рейтингу (убыв.)"/>
+                                <ComboBoxItem Content="По названию (А-Я)"/>
+                            </ComboBox>
+                        </StackPanel>
                     </StackPanel>
 
-                    <!-- Счётчик найденных в избранном -->
-                    <TextBlock x:Name="ResultsCountText" Text="Показано: 0"
-                               Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="4,0,0,0"/>
-
-                </WrapPanel>
+                    <!-- Правая часть: Счётчик элементов в коллекции -->
+                    <Border Grid.Column="1" VerticalAlignment="Center"
+                            Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                            CornerRadius="6" Padding="8,4">
+                        <TextBlock x:Name="ResultsCountText" Text="Показано: 0"
+                                   FontSize="11" FontFamily="Segoe UI Semibold"
+                                   Foreground="{StaticResource TextFaintBrush}"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
             </Border>
 
             <!-- КРАСИВЫЙ EMPTY STATE (КОГДА ПУСТО ИЛИ ПОИСК НЕ ДАЛ РЕЗУЛЬТАТОВ) -->
-            <Border x:Name="EmptyStateBorder" Visibility="Collapsed" Margin="0,20,0,40" RenderTransformOrigin="0.5,0.5">
+            <Border x:Name="EmptyStateBorder" Visibility="Collapsed"
+                    Background="{StaticResource CardBrush}"
+                    BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                    CornerRadius="16" Padding="36,40" Margin="0,16,0,28"
+                    HorizontalAlignment="Center" MaxWidth="520"
+                    RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="EmptyTranslate" X="0" Y="0"/>
                 </Border.RenderTransform>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource CardBrush}"
+                    <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource BgBrush}"
                             BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
                             HorizontalAlignment="Center" Margin="0,0,0,16">
-                        <Path x:Name="EmptyStateIcon" Data="{StaticResource IconHeart}" Fill="{StaticResource TextFaintBrush}"
+                        <Path x:Name="EmptyStateIcon" Data="{StaticResource IconHeart}" Fill="{StaticResource AccentBrush}"
                               Width="26" Height="26" Stretch="Uniform"
-                              HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65"/>
+                              HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85"/>
                     </Border>
-                    <TextBlock x:Name="EmptyStateTitle" Text="Здесь пока пусто" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <TextBlock x:Name="EmptyStateSubtitle" Text="Добавляйте фильмы и книги в избранное, чтобы собрать свою коллекцию."
-                               Style="{StaticResource BodyText}" HorizontalAlignment="Center" MaxWidth="440" TextAlignment="Center" Opacity="0.75" Margin="0,0,0,24"/>
+                    <TextBlock x:Name="EmptyStateTitle" Text="Здесь пока пусто" Style="{StaticResource H2}" FontSize="19" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="EmptyStateSubtitle" Text="Добавляйте фильмы и книги в избранное, чтобы собрать свою личную коллекцию."
+                               Style="{StaticResource BodyText}" FontSize="12.5" LineHeight="17" HorizontalAlignment="Center" MaxWidth="420" TextAlignment="Center" Opacity="0.75" Margin="0,0,0,20"/>
 
                     <!-- Кнопки действий Empty State -->
                     <StackPanel x:Name="EmptyStateActions" Orientation="Horizontal" HorizontalAlignment="Center">
                         <Button x:Name="EmptyGoMoviesBtn" Content="Найти фильм" Style="{StaticResource AccentButton}"
-                                Click="GoToMovies_Click" Margin="0,0,12,0" Padding="18,10"/>
+                                Height="34" Padding="16,0" Click="GoToMovies_Click" Margin="0,0,10,0"/>
                         <Button x:Name="EmptyGoBooksBtn" Content="Найти книгу" Style="{StaticResource GhostButton}"
-                                Click="GoToBooks_Click" Padding="18,10"/>
+                                Height="34" Padding="16,0" Click="GoToBooks_Click"/>
                         <Button x:Name="EmptyResetSearchBtn" Content="Сбросить поиск" Style="{StaticResource AccentButton}"
-                                Visibility="Collapsed" Click="ResetSearch_Click" Padding="18,10"/>
+                                Height="34" Padding="16,0" Visibility="Collapsed" Click="ResetSearch_Click"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- ОСНОВНАЯ СЕТКА КАРТОЧЕК ИЗБРАННОГО -->
-            <WrapPanel x:Name="CardsPanel" Orientation="Horizontal" Margin="0,0,0,20"/>
+            <!-- ОСНОВНАЯ СЕТКА КАРТОЧЕК ИЗБРАННОГО (ЕДИНЫЙ СТИЛЬ С КАТАЛОГАМИ «ФИЛЬМЫ» И «КНИГИ») -->
+            <UniformGrid x:Name="CardsPanel" Columns="4" Margin="-8,0,-8,20"/>
 
-            <!-- СЕКЦИЯ: НА ОСНОВЕ ВАШЕГО ИЗБРАННОГО (ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ БЕЗ ДУБЛИКАТОВ) -->
-            <StackPanel x:Name="RecommendationsSection" Margin="0,20,0,10">
-                <Grid Margin="0,0,0,14">
+            <!-- СЕКЦИЯ: НА ОСНОВЕ ВАШЕГО ИЗБРАННОГО (ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ, ВЫРОВНЕННЫЕ ПО ОБЩЕЙ СЕТКЕ) -->
+            <StackPanel x:Name="RecommendationsSection" Margin="0,10,0,10">
+                <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="На основе вашего избранного" Style="{StaticResource H2}"/>
-                        <TextBlock Text="Новые произведения, подобранные под ваш вкус" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
+                        <TextBlock Text="На основе вашего избранного" Style="{StaticResource H2}" FontSize="18"/>
+                        <TextBlock Text="Новые произведения, подобранные под ваш личный вкус" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
 
-                <UniformGrid x:Name="RecsGrid" Rows="1" Columns="4"/>
+                <UniformGrid x:Name="RecsGrid" Rows="1" Columns="4" Margin="-8,0,-8,16"/>
             </StackPanel>
 
         </StackPanel>

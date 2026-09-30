@@ -12,9 +12,9 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   SizeChanged="MainScroll_SizeChanged">
-        <StackPanel Margin="32,24,32,40">
+        <StackPanel Margin="32,20,32,40">
 
-            <!-- ВЕРХНЯЯ НАВИГАЦИОННАЯ ПАНЕЛЬ С КНОПКОЙ НАЗАД -->
+            <!-- 1. ВЕРХНЯЯ НАВИГАЦИОННАЯ ПАНЕЛЬ С КНОПКОЙ НАЗАД -->
             <Grid Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -33,38 +33,49 @@
                               Width="11" Height="11" Stretch="Uniform"
                               VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBlock Text="Назад" FontSize="13" FontFamily="Segoe UI Semibold"
-                                   Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                    Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
                 <!-- Хлебные крошки / путь -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                    <TextBlock x:Name="BreadcrumbSection" Text="КАТАЛОГ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextFaintBrush}"/>
+                    <TextBlock x:Name="BreadcrumbSection" Text="КАТАЛОГ" Style="{StaticResource Eyebrow}"
+                               Foreground="{StaticResource TextFaintBrush}" Cursor="Hand" ToolTip="Вернуться назад"
+                               MouseLeftButtonUp="BackBtn_Click"/>
                     <TextBlock Text="  /  " Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextFaintBrush}"/>
                     <TextBlock x:Name="BreadcrumbTitle" Text="НАЗВАНИЕ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
                 </StackPanel>
             </Grid>
 
-            <!-- ГЛАВНЫЙ КИНЕМАТОГРАФИЧНЫЙ HERO-БЛОК -->
+            <!-- 2. ГЛАВНЫЙ КИНЕМАТОГРАФИЧНЫЙ HERO-БЛОК -->
             <Border x:Name="HeroContainer"
                     CornerRadius="16" ClipToBounds="True"
                     Background="{StaticResource CardBrush}"
                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                    Margin="0,0,0,32">
+                    Margin="0,0,0,24">
                 <Grid>
                     <!-- Атмосферный полупрозрачный фон -->
                     <Image x:Name="HeroBackdropImage" Stretch="UniformToFill"
-                           Opacity="0.14" HorizontalAlignment="Right" Width="680"/>
+                           Opacity="0.16" HorizontalAlignment="Right" Width="720"/>
 
-                    <!-- Многослойное затемнение в цвета темы -->
-                    <Border>
+                    <!-- Многослойное кинематографичное затемнение -->
+                    <Border IsHitTestVisible="False">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#FC161114" Offset="0"/>
-                                <GradientStop Color="#F6161114" Offset="0.45"/>
-                                <GradientStop Color="#DC161114" Offset="0.75"/>
-                                <GradientStop Color="#B8161114" Offset="1"/>
+                                <GradientStop Color="#FF161114" Offset="0"/>
+                                <GradientStop Color="#F8161114" Offset="0.46"/>
+                                <GradientStop Color="#D8161114" Offset="0.75"/>
+                                <GradientStop Color="#99161114" Offset="1"/>
                             </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Border IsHitTestVisible="False">
+                        <Border.Background>
+                            <RadialGradientBrush Center="0.85,0.5" GradientOrigin="0.85,0.5" RadiusX="0.7" RadiusY="0.7">
+                                <GradientStop Color="#33C1666B" Offset="0"/>
+                                <GradientStop Color="#00161114" Offset="1"/>
+                            </RadialGradientBrush>
                         </Border.Background>
                     </Border>
 
@@ -75,107 +86,101 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Левая колонка: текстовые метаданные, описание, кнопки -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,28,0">
+                        <!-- Левая колонка: метаданные, заголовок, аккуратная строка деталей, кнопки -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,32,0">
 
-                            <!-- Бэйдж типа и жанры -->
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
+                            <!-- Бэйдж типа и категория -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
                                 <Border x:Name="HeroKindBadgeBorder"
                                         Background="#2D2128" BorderBrush="{StaticResource AccentBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="7,3" Margin="0,0,10,0">
+                                        BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,10,0">
                                     <TextBlock x:Name="HeroKindBadge" Text="ФИЛЬМ"
-                                               FontSize="10" FontFamily="Segoe UI Semibold"
+                                               FontSize="10.5" FontFamily="Segoe UI Semibold"
                                                Foreground="{StaticResource AccentBrush}"/>
                                 </Border>
-                                <TextBlock x:Name="HeroGenresText" Text="Фантастика, Драма"
-                                           FontSize="12" FontFamily="Segoe UI Semibold"
+                                <TextBlock x:Name="HeroCategoryBadge" Text="Художественный фильм"
+                                           FontSize="11.5" FontFamily="Segoe UI"
                                            Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <!-- Название произведения (крупно, перенос на 2 строки) -->
+                            <!-- Название произведения (главный визуальный элемент) -->
                             <TextBlock x:Name="HeroTitle"
                                        Text="Название произведения"
-                                       FontSize="30" FontFamily="Segoe UI Bold"
+                                       FontSize="32" FontFamily="Segoe UI Bold"
                                        Foreground="{StaticResource TextBrush}"
                                        TextWrapping="Wrap"
                                        LineHeight="38"
-                                       Margin="0,0,0,10"/>
+                                       MaxHeight="82"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,0,12"/>
 
-                            <!-- Метаданные (Рейтинг, Год, Режиссёр/Автор) -->
-                            <WrapPanel x:Name="HeroMetaPanel" VerticalAlignment="Center" Margin="0,0,0,16">
+                            <!-- Аккуратная структурированная строка метаданных -->
+                            <WrapPanel x:Name="HeroMetaPanel" VerticalAlignment="Center" Margin="0,0,0,24">
                                 <!-- Рейтинг -->
-                                <StackPanel x:Name="HeroRatingGroup" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <TextBlock Text="★" FontSize="14" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBlock x:Name="HeroRatingText" Text="8.7" FontSize="14" FontFamily="Segoe UI Bold"
-                                               Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text=" / 10" FontSize="11" Foreground="{StaticResource TextFaintBrush}"
-                                               VerticalAlignment="Center" Margin="2,0,0,0"/>
-                                </StackPanel>
+                                <Border Background="#251D22" BorderBrush="#3D2E37" BorderThickness="1"
+                                        CornerRadius="6" Padding="8,4" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <StackPanel x:Name="HeroRatingGroup" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="★" FontSize="13" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="HeroRatingText" Text="8.7" FontSize="13.5" FontFamily="Segoe UI Bold"
+                                                   Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text=" / 10" FontSize="11" Foreground="{StaticResource TextFaintBrush}"
+                                                   VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Год выпуска -->
+                                <TextBlock x:Name="HeroYearText" Text="2014 г." FontSize="13" FontFamily="Segoe UI Semibold"
+                                           Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                                 <TextBlock x:Name="HeroMetaDot1" Text="•" Foreground="{StaticResource TextFaintBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,12,0"/>
-
-                                <!-- Год -->
-                                <TextBlock x:Name="HeroYearText" Text="2014 г." FontSize="13"
-                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
-
-                                <TextBlock x:Name="HeroMetaDot2" Text="•" Foreground="{StaticResource TextFaintBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                                 <!-- Автор / Режиссёр -->
                                 <TextBlock x:Name="HeroAuthorText" Text="Режиссёр: Кристофер Нолан" FontSize="13"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                                <TextBlock x:Name="HeroMetaDot2" Text="•" Foreground="{StaticResource TextFaintBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                                <!-- Жанры -->
+                                <TextBlock x:Name="HeroGenresText" Text="Фантастика, Драма"
+                                           FontSize="13"
                                            Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                             </WrapPanel>
 
-                            <!-- Секция «Описание» -->
-                            <TextBlock Text="ОПИСАНИЕ" Style="{StaticResource Eyebrow}" Margin="0,0,0,6"/>
-                            <TextBlock x:Name="HeroDescription"
-                                       Text="Описание произведения..."
-                                       FontSize="13.5" LineHeight="21"
-                                       Foreground="{StaticResource TextBrush}"
-                                       TextWrapping="Wrap"
-                                       MaxHeight="68"
-                                       TextTrimming="CharacterEllipsis"/>
-
-                            <Button x:Name="ToggleDescBtn"
-                                    Content="Показать полностью ↓"
-                                    Style="{StaticResource GhostButton}"
-                                    HorizontalAlignment="Left"
-                                    FontSize="11.5"
-                                    Padding="8,4"
-                                    Margin="0,6,0,0"
-                                    Click="ToggleDescBtn_Click"/>
-
-                            <!-- Блок кнопок действий -->
-                            <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                            <!-- Блок кнопок действий (заметные, единая высота 42px) -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Button x:Name="PrimaryActionBtn"
                                         Style="{StaticResource AccentButton}"
-                                        Padding="22,12"
+                                        Height="42" Padding="26,0"
+                                        FontSize="13.5"
                                         Content="▷  Смотреть фильм"
                                         Click="PrimaryActionBtn_Click"/>
 
                                 <Button x:Name="FavoriteBtn"
                                         Style="{StaticResource GhostButton}"
-                                        Padding="18,12"
+                                        Height="42" Padding="20,0"
                                         Margin="12,0,0,0"
+                                        FontSize="13.5"
                                         Content="♡  В избранное"
                                         Click="FavoriteBtn_Click"/>
                             </StackPanel>
 
                         </StackPanel>
 
-                        <!-- Правая колонка: крупный пропорциональный постер с тенью -->
+                        <!-- Правая колонка: крупный визуальный постер с тенью -->
                         <Border Grid.Column="1" x:Name="HeroPosterBorder"
-                                Width="216" Height="316"
+                                Width="220" Height="320"
                                 VerticalAlignment="Center" HorizontalAlignment="Right"
+                                Background="{StaticResource BgSoftBrush}"
                                 CornerRadius="12" ClipToBounds="True"
                                 BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1">
                             <Border.Effect>
-                                <DropShadowEffect Color="#000000" BlurRadius="26" ShadowDepth="6" Opacity="0.55"/>
+                                <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="6" Opacity="0.60"/>
                             </Border.Effect>
                             <Grid>
                                 <Image x:Name="HeroPosterImage" Stretch="UniformToFill"/>
-                                <Border VerticalAlignment="Bottom" Height="60"
+                                <Border VerticalAlignment="Bottom" Height="50"
                                         Background="{StaticResource PosterFadeBrush}" Opacity="0.35"/>
                             </Grid>
                         </Border>
@@ -184,76 +189,138 @@
                 </Grid>
             </Border>
 
-            <!-- СЕКЦИЯ: ДЕТАЛИ -->
-            <TextBlock Text="Детали" Style="{StaticResource H2}" Margin="0,0,0,12"/>
+            <!-- 3. СЕКЦИЯ: ОПИСАНИЕ И СЮЖЕТ В ОТДЕЛЬНОМ ВИЗУАЛЬНОМ БЛОКЕ -->
             <Border Background="{StaticResource CardBrush}"
                     BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
-                    CornerRadius="12" Padding="24,20" Margin="0,0,0,32">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Колонка 1 -->
-                    <StackPanel Grid.Column="0">
-                        <!-- Роль создателя -->
-                        <StackPanel x:Name="DetailCreatorGroup" Margin="0,0,0,16">
-                            <TextBlock x:Name="DetailCreatorLabel" Text="РЕЖИССЁР" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailCreatorValue" Text="Кристофер Нолан" Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
+                    CornerRadius="14" Padding="28,24" Margin="0,0,0,24">
+                <StackPanel>
+                    <Grid Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconInfo}" Fill="{StaticResource Accent2Brush}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock x:Name="DescriptionHeaderTitle" Text="О ПРОИЗВЕДЕНИИ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
                         </StackPanel>
+                    </Grid>
 
-                        <!-- Год выпуска -->
-                        <StackPanel x:Name="DetailYearGroup" Margin="0,0,0,16">
-                            <TextBlock Text="ГОД ВЫПУСКА" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailYearValue" Text="2014 г." Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
-                        </StackPanel>
+                    <!-- Текст описания -->
+                    <TextBlock x:Name="FullStoryText"
+                               Text="Описание произведения..."
+                               FontSize="14.5" LineHeight="24"
+                               Foreground="{StaticResource TextBrush}"
+                               TextWrapping="Wrap" Opacity="0.94"/>
 
-                        <!-- Тип произведения -->
-                        <StackPanel Margin="0,0,0,0">
-                            <TextBlock Text="ТИП ПРОИЗВЕДЕНИЯ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailKindValue" Text="Художественный фильм" Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
-                        </StackPanel>
+                    <!-- Жанровые чипсы -->
+                    <StackPanel x:Name="GenreChipsSection" Margin="0,18,0,0">
+                        <Border Height="1" Background="{StaticResource BorderSubtleBrush}" Margin="0,0,0,16"/>
+                        <TextBlock Text="ЖАНРЫ И ТЕМАТИКА" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10"/>
+                        <WrapPanel x:Name="GenreChipsPanel"/>
                     </StackPanel>
-
-                    <!-- Колонка 2 -->
-                    <StackPanel Grid.Column="2">
-                        <!-- Жанры -->
-                        <StackPanel x:Name="DetailGenresGroup" Margin="0,0,0,16">
-                            <TextBlock Text="ЖАНРЫ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailGenresValue" Text="Фантастика, Драма" Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
-                        </StackPanel>
-
-                        <!-- Рейтинг -->
-                        <StackPanel x:Name="DetailRatingGroup" Margin="0,0,0,16">
-                            <TextBlock Text="РЕЙТИНГ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailRatingValue" Text="★ 8.7 из 10" Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
-                        </StackPanel>
-
-                        <!-- Статус в избранном -->
-                        <StackPanel Margin="0,0,0,0">
-                            <TextBlock Text="В ВАШЕЙ КОЛЛЕКЦИИ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="DetailFavoriteStatus" Text="В избранном" Style="{StaticResource BodyText}" FontSize="14" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
+                </StackPanel>
             </Border>
 
-            <!-- СЕКЦИЯ: ПОХОЖИЕ ПРОИЗВЕДЕНИЯ -->
-            <Grid Margin="0,0,0,12">
+            <!-- 4. СЕКЦИЯ: ХАРАКТЕРИСТИКИ И ДЕТАЛИ (ПОЛНОЦЕННЫЙ БЛОК) -->
+            <TextBlock Text="Характеристики и детали" Style="{StaticResource H2}" Margin="0,0,0,14"/>
+            <Border Background="{StaticResource CardBrush}"
+                    BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                    CornerRadius="14" Padding="20,18" Margin="0,0,0,32">
+                <UniformGrid x:Name="DetailsGrid" Columns="4" Margin="-6,-6,-6,-6">
+                    <!-- 1. Создатель -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock x:Name="DetailCreatorLabel" Text="РЕЖИССЁР" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailCreatorValue" Text="Кристофер Нолан" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="Постановщик" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. Год выпуска -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock x:Name="DetailYearLabel" Text="ГОД ВЫПУСКА" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailYearValue" Text="2014 год" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="Период премьеры" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 3. Формат -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock Text="ФОРМАТ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailKindValue" Text="Художественный фильм" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="Тип медиа" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. Рейтинг -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock x:Name="DetailRatingLabel" Text="ОЦЕНКА ЗРИТЕЛЕЙ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailRatingValue" Text="★ 8.7 из 10" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource Accent2Brush}"/>
+                            <TextBlock x:Name="DetailRatingCategory" Text="Шедевр (высокая оценка)" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 5. Жанры -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock Text="ОСНОВНЫЕ ЖАНРЫ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailGenresValue" Text="Фантастика, Драма" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="Каталог тематик" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 6. Статус в коллекции -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock Text="ВАША КОЛЛЕКЦИЯ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailFavoriteStatus" Text="В избранном" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold"/>
+                            <TextBlock Text="Персональный статус" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 7. Доступность -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock Text="ДОСТУПНОСТЬ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="DetailAccessValue" Text="Смотреть онлайн" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="Внешние каталоги" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 8. Рекомендации -->
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="6">
+                        <StackPanel>
+                            <TextBlock Text="РЕКОМЕНДАЦИИ" Style="{StaticResource Eyebrow}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Персональный подбор" Style="{StaticResource BodyText}" FontSize="13.5" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="На основе вкусов" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </Border>
+
+            <!-- 5. СЕКЦИЯ: ПОХОЖИЕ ПРОИЗВЕДЕНИЯ -->
+            <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="Похожие произведения" Style="{StaticResource H2}"/>
-                    <TextBlock Text="Подобрано на основе жанров, создателя и оценок" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
+                    <TextBlock Text="Подобрано на основе жанров, создателя и рейтинга" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
                 </StackPanel>
             </Grid>
 
-            <!-- Сетка похожих карточек (без горизонтального скролла) -->
-            <UniformGrid x:Name="SimilarGrid" Rows="1" Columns="4" Margin="0,0,0,10"/>
+            <!-- Баннер если похожих нет -->
+            <Border x:Name="SimilarEmptyBanner" Visibility="Collapsed"
+                    Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                    CornerRadius="12" Padding="28,24" Margin="0,0,0,16">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="Похожих произведений пока не найдено" Style="{StaticResource H3}" HorizontalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="Попробуйте исследовать другие разделы каталога или расширить коллекцию." Style="{StaticResource SmallText}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Сетка похожих карточек (заполняет всю ширину, до 2 рядов карточек) -->
+            <UniformGrid x:Name="SimilarGrid" Columns="5" Margin="-8,0,-8,16"/>
 
         </StackPanel>
     </ScrollViewer>
