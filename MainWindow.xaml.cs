@@ -182,26 +182,34 @@ namespace MovieBookRecommender
         private void SidebarControl_Navigate(string key)
         {
             _currentDetailItem = null;
-            ShowPage(key, clearHistory: false);
+            ShowPage(key, clearHistory: true);
             ShowFeaturedDefault(shuffle: false);
         }
 
         private void SidebarControl_ItemReselected(string key)
         {
-            // Если пользователь кликнул на уже активный пункт меню
+            // Если пользователь кликнул на уже активный пункт меню или логотип
             if (_currentPageKey == "detail")
             {
                 _currentDetailItem = null;
-                ShowPage(key);
+                ShowPage(key, clearHistory: true);
+                ShowFeaturedDefault(shuffle: false);
             }
-            else if (_pages.TryGetValue(key, out var page))
+            else
             {
-                switch (page)
+                if (key == "home")
                 {
-                    case ListPage lp: lp.ScrollToTop(); break;
-                    case HomePage hp: hp.ScrollToTop(); break;
-                    case FavoritesPage fp: fp.ScrollToTop(); break;
-                    case DetailPage dp: dp.ScrollToTop(); break;
+                    _history.Clear();
+                }
+                if (_pages.TryGetValue(key, out var page))
+                {
+                    switch (page)
+                    {
+                        case ListPage lp: lp.ScrollToTop(); break;
+                        case HomePage hp: hp.ScrollToTop(); break;
+                        case FavoritesPage fp: fp.ScrollToTop(); break;
+                        case DetailPage dp: dp.ScrollToTop(); break;
+                    }
                 }
             }
         }
@@ -316,9 +324,9 @@ namespace MovieBookRecommender
         {
             var entry = CaptureCurrentState();
             _history.Push(entry);
-            _currentDetailItem = null;
             ShowPage(targetKey, genreFilter: genre, clearHistory: false);
             ShowFeaturedDefault(shuffle: false);
+            _currentDetailItem = null;
         }
 
         private NavigationEntry CaptureCurrentState()
@@ -508,7 +516,7 @@ namespace MovieBookRecommender
         /// <summary>
         /// Отображает детальный экран произведения на месте главной центральной области.
         /// </summary>
-        public void ShowDetailPage(MediaItem item, bool isBackNavigation = false, double savedScrollOffset = 0, string fromSection = "")
+        public void ShowDetailPage(MediaItem item, double savedScrollOffset = 0, string fromSection = "")
         {
             bool isSamePage = _currentVisiblePage is DetailPage;
             _currentDetailItem = item;
@@ -549,7 +557,7 @@ namespace MovieBookRecommender
                 var prev = _history.Pop();
                 if (prev.PageKey == "detail" && prev.DetailItem != null)
                 {
-                    ShowDetailPage(prev.DetailItem, isBackNavigation: true, savedScrollOffset: prev.ScrollOffset, fromSection: prev.SourceTitle);
+                    ShowDetailPage(prev.DetailItem, savedScrollOffset: prev.ScrollOffset, fromSection: prev.SourceTitle);
                 }
                 else
                 {
