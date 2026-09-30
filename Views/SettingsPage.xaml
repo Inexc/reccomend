@@ -5,18 +5,24 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="48,32,48,40" MaxWidth="580">
             <TextBlock Text="Настройки" Style="{StaticResource H1}" Margin="0,0,0,8"/>
-            <TextBlock Text="Управление приложением и вашими данными" Style="{StaticResource BodyText}" Opacity="0.8" Margin="0,0,0,32"/>
+            <TextBlock Text="Настройте приложение под себя" Style="{StaticResource BodyText}" Opacity="0.8" Margin="0,0,0,32"/>
 
             <!-- Внешний вид -->
-            <StackPanel Margin="0,0,0,16">
+            <StackPanel Margin="0,0,0,24">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                    <TextBlock Text="🎨" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                            VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Path Data="{StaticResource IconPalette}" Fill="{StaticResource Accent2Brush}" Width="15" Height="15"
+                              Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="ВНЕШНИЙ ВИД" Style="{StaticResource Eyebrow}"/>
                         <TextBlock Text="Тема и размер интерфейса" Style="{StaticResource SmallText}" Opacity="0.7"/>
                     </StackPanel>
                 </StackPanel>
-                <Border Background="{StaticResource CardBrush}" CornerRadius="12" Padding="20">
+                <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                        CornerRadius="12" Padding="20">
                     <StackPanel>
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -44,15 +50,21 @@
             </StackPanel>
 
             <!-- Избранное -->
-            <StackPanel Margin="0,0,0,16">
+            <StackPanel Margin="0,0,0,24">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                    <TextBlock Text="♡" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                            VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Path Data="{StaticResource IconHeart}" Fill="{StaticResource AccentBrush}" Width="14" Height="14"
+                              Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="ИЗБРАННОЕ" Style="{StaticResource Eyebrow}"/>
                         <TextBlock Text="Управление сохранёнными элементами" Style="{StaticResource SmallText}" Opacity="0.7"/>
                     </StackPanel>
                 </StackPanel>
-                <Border Background="{StaticResource CardBrush}" CornerRadius="12" Padding="20">
+                <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                        CornerRadius="12" Padding="20">
                     <StackPanel>
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -61,7 +73,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Количество сохранённых элементов" Style="{StaticResource H3}"
                                        Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="FavoritesCountText" Grid.Column="1" FontSize="13" FontFamily="Segoe UI Semibold"
+                            <TextBlock x:Name="FavoritesCountText" Grid.Column="1" FontSize="14" FontFamily="Segoe UI Semibold"
                                        Foreground="{StaticResource Accent2Brush}"/>
                         </Grid>
                         <Button Content="Очистить избранное" Style="{StaticResource DangerButton}"
@@ -73,13 +85,19 @@
             <!-- О приложении -->
             <StackPanel Margin="0,0,0,0">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                    <TextBlock Text="ℹ" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                            VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Path Data="{StaticResource IconInfo}" Fill="{StaticResource Accent2Brush}" Width="14" Height="14"
+                              Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="О ПРИЛОЖЕНИИ" Style="{StaticResource Eyebrow}"/>
                         <TextBlock Text="Информация и версия" Style="{StaticResource SmallText}" Opacity="0.7"/>
                     </StackPanel>
                 </StackPanel>
-                <Border Background="{StaticResource CardBrush}" CornerRadius="12" Padding="20">
+                <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                        CornerRadius="12" Padding="20">
                     <StackPanel>
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Text="Рекомендации фильмов и книг" Style="{StaticResource H3}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4"/>

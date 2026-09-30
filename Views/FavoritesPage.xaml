@@ -3,30 +3,35 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BgBrush}">
     <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Top" Margin="48,32,48,28">
-            <TextBlock Text="❤ Избранное" Style="{StaticResource H1}" Margin="0,0,0,8"/>
+        <StackPanel DockPanel.Dock="Top" Margin="48,32,48,24">
+            <TextBlock Text="Избранное" Style="{StaticResource H1}" Margin="0,0,0,8"/>
             <TextBlock Text="То, что вы хотите посмотреть или прочитать позже" Style="{StaticResource BodyText}" Opacity="0.8"/>
         </StackPanel>
 
-        <Border DockPanel.Dock="Top" Background="{StaticResource CardBrush}" CornerRadius="12" Margin="48,0,48,20" Padding="20">
+        <!-- Компактный блок статистики: крупное число над мелкой подписью -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource CardBrush}"
+                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                CornerRadius="12" Margin="48,0,48,20" Padding="24,14">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Фильмы" Style="{StaticResource SmallText}" Foreground="{StaticResource TextFaintBrush}" Margin="0,0,0,2"/>
-                    <TextBlock x:Name="MoviesCountText" FontSize="18" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock x:Name="MoviesCountText" FontSize="24" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Фильмов" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Margin="40,0,0,0">
-                    <TextBlock Text="Книги" Style="{StaticResource SmallText}" Foreground="{StaticResource TextFaintBrush}" Margin="0,0,0,2"/>
-                    <TextBlock x:Name="BooksCountText" FontSize="18" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                <StackPanel Grid.Column="2">
+                    <TextBlock x:Name="BooksCountText" FontSize="24" FontFamily="Segoe UI Semibold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Книг" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Margin="40,0,0,0">
-                    <TextBlock Text="Всего" Style="{StaticResource SmallText}" Foreground="{StaticResource TextFaintBrush}" Margin="0,0,0,2"/>
-                    <TextBlock x:Name="TotalCountText" FontSize="18" FontFamily="Segoe UI Semibold" Foreground="{StaticResource Accent2Brush}"/>
+                <StackPanel Grid.Column="4">
+                    <TextBlock x:Name="TotalCountText" FontSize="24" FontFamily="Segoe UI Semibold" Foreground="{StaticResource Accent2Brush}"/>
+                    <TextBlock Text="Всего" Style="{StaticResource CaptionText}" Margin="0,2,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -42,10 +47,15 @@
                 <TranslateTransform x:Name="EmptyTranslate" X="0" Y="0"/>
             </Border.RenderTransform>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,60,0,0">
-                <TextBlock Text="♡" FontSize="48" Foreground="{StaticResource TextFaintBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                <Border Width="60" Height="60" CornerRadius="30" Background="{StaticResource CardBrush}"
+                        BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                        HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <Path Data="{StaticResource IconHeart}" Fill="{StaticResource TextFaintBrush}" Width="26" Height="26" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
+                </Border>
                 <TextBlock Text="У вас пока нет избранного" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                 <TextBlock Text="Добавляйте фильмы и книги, нажимая на иконку сердечка на карточках"
-                           Style="{StaticResource BodyText}" HorizontalAlignment="Center" MaxWidth="440" TextAlignment="Center" Opacity="0.7" Margin="0,0,0,24"/>
+                           Style="{StaticResource BodyText}" HorizontalAlignment="Center" MaxWidth="440" TextAlignment="Center" Opacity="0.75" Margin="0,0,0,24"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Button Content="Перейти к фильмам" Style="{StaticResource AccentButton}" Click="GoToMovies_Click" Margin="0,0,12,0" Padding="18,10"/>
                     <Button Content="Перейти к книгам" Style="{StaticResource GhostButton}" Click="GoToBooks_Click" Padding="18,10"/>

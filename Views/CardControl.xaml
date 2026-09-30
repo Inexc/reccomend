@@ -38,16 +38,17 @@
                         <SolidColorBrush x:Name="HeartBrush" Color="#DD161114"/>
                     </Border.Background>
                     <TextBlock x:Name="FavIcon" Text="♡" FontSize="13" Foreground="White"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe UI Semibold"/>
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontFamily="Segoe UI Semibold" Margin="0,0,0,1"/>
                 </Border>
 
                 <StackPanel VerticalAlignment="Bottom" Margin="12,0,12,12">
                     <TextBlock x:Name="TitleText" FontSize="14" FontFamily="Segoe UI Semibold"
                                Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"
-                               MaxHeight="34" TextTrimming="CharacterEllipsis"/>
+                               MaxHeight="36" LineHeight="18" TextTrimming="CharacterEllipsis"/>
                     <TextBlock x:Name="SubtitleText" FontSize="11" Foreground="{StaticResource TextMutedBrush}"
-                               Margin="0,4,0,4" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="RatingText" FontSize="11" FontFamily="Segoe UI Semibold"
+                               Margin="0,3,0,3" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="RatingText" FontSize="11.5" FontFamily="Segoe UI Semibold"
                                Foreground="{StaticResource Accent2Brush}"/>
                 </StackPanel>
             </Grid>

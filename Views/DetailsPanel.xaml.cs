@@ -125,38 +125,57 @@ namespace MovieBookRecommender.Views
                 Margin = new Thickness(0, 0, 0, 4)
             });
 
-            // Автор / Режиссёр
+            // Мета-блок: Автор/Режиссёр, Жанр и год, Рейтинг
+            var metaStack = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+
             if (!string.IsNullOrWhiteSpace(item.Author))
             {
                 var role = item.Kind == MediaKind.Movie ? "Режиссёр" : "Автор";
-                ContentPanel.Children.Add(new TextBlock
+                metaStack.Children.Add(new TextBlock
                 {
                     Text = $"{role}: {item.Author}",
                     FontSize = 12,
                     Foreground = (Brush)Application.Current.Resources["TextBrush"],
                     FontWeight = FontWeights.Medium,
-                    Margin = new Thickness(0, 0, 0, 4)
+                    Margin = new Thickness(0, 0, 0, 3)
                 });
             }
 
-            // Жанр и год
             var metaText = item.Year > 0 ? $"{item.GenreText}  •  {item.Year} г." : item.GenreText;
-            ContentPanel.Children.Add(new TextBlock
+            metaStack.Children.Add(new TextBlock
             {
                 Text = metaText,
                 Style = (Style)Application.Current.Resources["SmallText"],
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 4)
             });
 
-            // Рейтинг
-            ContentPanel.Children.Add(new TextBlock
+            var ratingRow = new StackPanel { Orientation = Orientation.Horizontal };
+            ratingRow.Children.Add(new TextBlock
             {
-                Text = $"⭐ {item.Rating:F1} / 10",
-                FontWeight = FontWeights.SemiBold,
+                Text = "★",
                 FontSize = 13,
-                Foreground = (Brush)Application.Current.Resources["YellowBrush"],
-                Margin = new Thickness(0, 0, 0, 8)
+                Foreground = (Brush)Application.Current.Resources["Accent2Brush"],
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0)
             });
+            ratingRow.Children.Add(new TextBlock
+            {
+                Text = $"{item.Rating:F1}",
+                FontSize = 13,
+                FontFamily = new FontFamily("Segoe UI Semibold"),
+                Foreground = (Brush)Application.Current.Resources["Accent2Brush"],
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            ratingRow.Children.Add(new TextBlock
+            {
+                Text = " / 10",
+                FontSize = 11,
+                Foreground = (Brush)Application.Current.Resources["TextFaintBrush"],
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            metaStack.Children.Add(ratingRow);
+
+            ContentPanel.Children.Add(metaStack);
 
             // Описание
             ContentPanel.Children.Add(new TextBlock
@@ -216,12 +235,26 @@ namespace MovieBookRecommender.Views
             var reasons = item.Kind == MediaKind.Movie ? MovieReasons : BookReasons;
             foreach (var reason in reasons)
             {
-                ContentPanel.Children.Add(new TextBlock
+                var rPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 3) };
+                var check = new System.Windows.Shapes.Path
                 {
-                    Text = $"✓  {reason}",
+                    Data = (Geometry)Application.Current.Resources["IconCheck"],
+                    Fill = (Brush)Application.Current.Resources["Accent2Brush"],
+                    Width = 11,
+                    Height = 11,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                var txt = new TextBlock
+                {
+                    Text = reason,
                     Style = (Style)Application.Current.Resources["SmallText"],
-                    Margin = new Thickness(0, 2, 0, 2)
-                });
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                rPanel.Children.Add(check);
+                rPanel.Children.Add(txt);
+                ContentPanel.Children.Add(rPanel);
             }
 
             // Раздел "Похожие"

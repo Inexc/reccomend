@@ -13,13 +13,13 @@ namespace MovieBookRecommender.Views
     {
         public event Action<string>? Navigate;
 
-        private static readonly (string Key, string Icon, string Label)[] Items =
+        private static readonly (string Key, string IconKey, string Label)[] Items =
         {
-            ("home", "⌂", "Главная"),
-            ("movies", "▷", "Фильмы"),
-            ("books", "▤", "Книги"),
-            ("favorites", "♡", "Избранное"),
-            ("settings", "⚙", "Настройки"),
+            ("home", "IconHome", "Главная"),
+            ("movies", "IconFilm", "Фильмы"),
+            ("books", "IconBook", "Книги"),
+            ("favorites", "IconHeart", "Избранное"),
+            ("settings", "IconSettings", "Настройки"),
         };
 
         private static readonly Color MutedColor = Color.FromRgb(0xA3, 0x9A, 0x95);
@@ -29,7 +29,7 @@ namespace MovieBookRecommender.Views
         private class NavRow
         {
             public Border Pill = null!;
-            public TextBlock Icon = null!;
+            public System.Windows.Shapes.Path Icon = null!;
             public TextBlock Label = null!;
             public TextBlock? BadgeText;
             public SolidColorBrush BgBrush = null!;
@@ -48,7 +48,7 @@ namespace MovieBookRecommender.Views
 
         private void BuildNav()
         {
-            foreach (var (key, icon, label) in Items)
+            foreach (var (key, iconKey, label) in Items)
             {
                 var bgBrush = new SolidColorBrush(Colors.Transparent);
                 var fgBrush = new SolidColorBrush(MutedColor);
@@ -56,26 +56,31 @@ namespace MovieBookRecommender.Views
                 var pill = new Border
                 {
                     CornerRadius = new CornerRadius(8),
-                    Margin = new Thickness(0, 4, 0, 4),
+                    Margin = new Thickness(0, 3, 0, 3),
                     Padding = new Thickness(10, 8, 10, 8),
                     Cursor = Cursors.Hand,
                     Background = bgBrush
                 };
 
-                var content = new StackPanel { Orientation = Orientation.Horizontal };
-                var iconText = new TextBlock
+                var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                var iconPath = new System.Windows.Shapes.Path
                 {
-                    Text = icon, FontSize = 13, Width = 20, Margin = new Thickness(0, 0, 8, 0),
-                    Foreground = fgBrush,
+                    Data = (Geometry)Application.Current.Resources[iconKey],
+                    Fill = fgBrush,
+                    Width = 15,
+                    Height = 15,
+                    Stretch = Stretch.Uniform,
+                    Margin = new Thickness(2, 0, 10, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
                     Opacity = 0.82
                 };
                 var labelText = new TextBlock
                 {
-                    Text = label, FontSize = 12,
+                    Text = label, FontSize = 12.5,
                     Foreground = fgBrush,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                content.Children.Add(iconText);
+                content.Children.Add(iconPath);
                 content.Children.Add(labelText);
 
                 TextBlock? badge = null;
@@ -103,7 +108,7 @@ namespace MovieBookRecommender.Views
                             new ColorAnimation(HoverBgColor, TimeSpan.FromMilliseconds(160)));
                         fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
                             new ColorAnimation(WhiteColor, TimeSpan.FromMilliseconds(160)));
-                        iconText.BeginAnimation(UIElement.OpacityProperty,
+                        iconPath.BeginAnimation(UIElement.OpacityProperty,
                             new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(160)));
                     }
                 };
@@ -115,7 +120,7 @@ namespace MovieBookRecommender.Views
                             new ColorAnimation(Colors.Transparent, TimeSpan.FromMilliseconds(180)));
                         fgBrush.BeginAnimation(SolidColorBrush.ColorProperty,
                             new ColorAnimation(MutedColor, TimeSpan.FromMilliseconds(180)));
-                        iconText.BeginAnimation(UIElement.OpacityProperty,
+                        iconPath.BeginAnimation(UIElement.OpacityProperty,
                             new DoubleAnimation(0.82, TimeSpan.FromMilliseconds(180)));
                     }
                 };
@@ -128,7 +133,7 @@ namespace MovieBookRecommender.Views
                 _rows[key] = new NavRow
                 {
                     Pill = pill,
-                    Icon = iconText,
+                    Icon = iconPath,
                     Label = labelText,
                     BadgeText = badge,
                     BgBrush = bgBrush,
