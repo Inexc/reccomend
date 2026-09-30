@@ -21,3 +21,4 @@ namespace MovieBookRecommender
         public static readonly bool Debug = false;
     }
 }
+

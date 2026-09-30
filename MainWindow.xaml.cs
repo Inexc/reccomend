@@ -254,10 +254,15 @@ namespace MovieBookRecommender
             {
                 newPage.Opacity = 1.0;
 
-                if (oldPage != null && oldPage != newPage)
+                for (int i = CenterHost.Children.Count - 1; i >= 0; i--)
                 {
-                    oldPage.BeginAnimation(UIElement.OpacityProperty, null);
-                    CenterHost.Children.Remove(oldPage);
+                    var child = CenterHost.Children[i];
+                    if (child != newPage)
+                    {
+                        if (child is UIElement ui)
+                            ui.BeginAnimation(UIElement.OpacityProperty, null);
+                        CenterHost.Children.RemoveAt(i);
+                    }
                 }
                 return;
             }
