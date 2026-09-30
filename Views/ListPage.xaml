@@ -105,8 +105,8 @@
             </WrapPanel>
         </Border>
 
-        <ScrollViewer x:Name="CardsScroll" VerticalScrollBarVisibility="Auto" Margin="48,0,48,40"
-                      SizeChanged="CardsScroll_SizeChanged">
+        <ScrollViewer x:Name="CardsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Margin="48,0,48,40" SizeChanged="CardsScroll_SizeChanged">
             <Grid>
                 <!-- Состояние «Ничего не найдено» -->
                 <Border x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0" RenderTransformOrigin="0.5,0.5">

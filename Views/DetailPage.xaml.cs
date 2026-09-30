@@ -24,6 +24,7 @@ namespace MovieBookRecommender.Views
 
         private bool _isDescExpanded = false;
         private double _currentCardWidth = 180;
+        private List<MediaItem> _similarCandidates = new();
 
         public DetailPage()
         {
@@ -228,46 +229,25 @@ namespace MovieBookRecommender.Views
         }
 
         // ------------------------------------------------------------------
-        // Секция похожих произведений
+        // Секция похожих произведений и адаптивность
         // ------------------------------------------------------------------
+        private const double CardGap = 16.0;
+
+        private static int CalculateColumns(double width)
+        {
+            if (width >= 1150) return 5;
+            if (width >= 750) return 4;
+            if (width >= 520) return 3;
+            return 2;
+        }
+
         private void BuildSimilarItems()
         {
-            SimilarGrid.Children.Clear();
-
             var pool = _data.AllItems().Where(i => i.Id != _item.Id).ToList();
-            var similar = RecommendationService.RecommendSimilar(_item, pool, limit: 4);
+            _similarCandidates = RecommendationService.RecommendSimilar(_item, pool, limit: 6);
 
-            var columns = SimilarGrid.Columns > 0 ? SimilarGrid.Columns : 4;
-            var gap = 14.0;
-
-            for (int i = 0; i < similar.Count; i++)
-            {
-                var candidate = similar[i];
-                var card = new CardControl
-                {
-                    Width = _currentCardWidth,
-                    Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, gap, 16)
-                };
-                card.Initialize(candidate, _data);
-
-                // При клике на похожее — открываем его детальную страницу
-                card.OpenRequested += it =>
-                {
-                    _app.OpenItem(it);
-                };
-
-                // При изменении избранного
-                card.FavoriteChanged += _ =>
-                {
-                    UpdateFavoriteButton();
-                    UpdateFavoriteStatusText();
-                    _app.OnFavoriteChanged(candidate);
-                };
-
-                SimilarGrid.Children.Add(card);
-            }
+            var availableWidth = MainScroll?.ActualWidth > 0 ? MainScroll.ActualWidth - 96 : 800;
+            ApplyResponsiveWidth(Math.Max(300, availableWidth));
         }
 
         private void MainScroll_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -279,10 +259,8 @@ namespace MovieBookRecommender.Views
         {
             if (availableWidth <= 0 || SimilarGrid == null) return;
 
-            int columns = availableWidth >= 680 ? 4 : 2;
-            double cardGap = 14.0;
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * cardGap)) / columns);
-            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 245);
+            var columns = CalculateColumns(availableWidth);
+            var widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
             _currentCardWidth = widthPerCard;
 
             SimilarGrid.Columns = columns;
@@ -301,15 +279,38 @@ namespace MovieBookRecommender.Views
                 }
             }
 
-            for (int i = 0; i < SimilarGrid.Children.Count; i++)
+            RenderSimilarGrid(columns, widthPerCard);
+        }
+
+        private void RenderSimilarGrid(int columns, double widthPerCard)
+        {
+            SimilarGrid.Children.Clear();
+            var itemsToShow = _similarCandidates.Take(columns).ToList();
+
+            for (int i = 0; i < itemsToShow.Count; i++)
             {
-                if (SimilarGrid.Children[i] is CardControl card)
+                var candidate = itemsToShow[i];
+                var card = new CardControl
                 {
-                    card.Width = widthPerCard;
-                    card.Margin = ((i + 1) % columns == 0)
+                    Width = widthPerCard,
+                    Margin = ((i + 1) % columns == 0)
                         ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, cardGap, 16);
-                }
+                        : new Thickness(0, 0, CardGap, 16)
+                };
+                card.Initialize(candidate, _data);
+
+                // При клике на похожее — открываем его детальную страницу
+                card.OpenRequested += it => _app.OpenItem(it);
+
+                // При изменении избранного
+                card.FavoriteChanged += _ =>
+                {
+                    UpdateFavoriteButton();
+                    UpdateFavoriteStatusText();
+                    _app.OnFavoriteChanged(candidate);
+                };
+
+                SimilarGrid.Children.Add(card);
             }
         }
     }

@@ -19,7 +19,7 @@
             </Border>
         </Grid>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel x:Name="ContentPanel" Margin="18,0,18,18" RenderTransformOrigin="0.5,0">
                 <StackPanel.RenderTransform>
                     <TranslateTransform x:Name="ContentTranslate" X="0" Y="0"/>

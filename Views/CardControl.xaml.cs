@@ -10,15 +10,23 @@ using MovieBookRecommender.Services;
 namespace MovieBookRecommender.Views
 {
     /// <summary>
-    /// Карточка произведения: постер во всю площадь, тёмный градиент
-    /// снизу с названием/автором/рейтингом, сердечко избранного сверху справа.
-    /// При наведении — плавное увеличение (2.5%), приближение картинки,
-    /// мягкая тень и подсветка кнопки избранного.
+    /// Универсальная интерактивная карточка произведения:
+    /// - Аккуратный постер с фиксированным соотношением сторон (1 : 1.44);
+    /// - Красивый monogram-fallback при отсутствии или загрузке изображения;
+    /// - Название максимум в 2 строки без обрезания дескендеров;
+    /// - Автор / Режиссёр;
+    /// - Рейтинг ★ и Жанр;
+    /// - Компактная кнопка избранного поверх постера (изолированный клик);
+    /// - Четыре состояния: Hover, Pressed, Selected, Добавлено в избранное.
     /// </summary>
     public partial class CardControl : UserControl
     {
         public MediaItem Item { get; private set; } = null!;
+        public bool IsSelected { get; private set; }
+
         private DataManager _data = null!;
+        private bool _isHovered;
+        private bool _isPressed;
 
         public event Action<MediaItem>? OpenRequested;
         public event Action<MediaItem>? FavoriteChanged;
@@ -39,11 +47,106 @@ namespace MovieBookRecommender.Views
             _data = data;
 
             TitleText.Text = item.Title;
-            SubtitleText.Text = string.IsNullOrWhiteSpace(item.Author) ? item.GenreText : item.Author;
-            RatingText.Text = $"★ {item.Rating:F1}";
-            UpdateFavIcon(animate: false);
+            GenreText.Text = item.GenreText;
+            RatingText.Text = $"{item.Rating:F1}";
 
-            PosterImage.Source = PosterService.GetImage(item);
+            if (item.Kind == MediaKind.Movie)
+            {
+                SubtitleText.Text = !string.IsNullOrWhiteSpace(item.Author)
+                    ? $"Реж. {item.Author}"
+                    : (item.Year > 0 ? $"{item.Year} г." : "");
+            }
+            else
+            {
+                SubtitleText.Text = !string.IsNullOrWhiteSpace(item.Author)
+                    ? item.Author
+                    : (item.Year > 0 ? $"{item.Year} г." : "");
+            }
+
+            var img = PosterService.GetImage(item);
+            if (img != null)
+            {
+                PosterImage.Source = img;
+                PosterImage.Visibility = Visibility.Visible;
+                FallbackContainer.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                PosterImage.Source = null;
+                PosterImage.Visibility = Visibility.Collapsed;
+                FallbackContainer.Visibility = Visibility.Visible;
+                FallbackLetter.Text = string.IsNullOrWhiteSpace(item.Title)
+                    ? "?"
+                    : item.Title.Trim().Substring(0, 1).ToUpper();
+                FallbackIcon.Data = item.Kind == MediaKind.Movie
+                    ? (Geometry)Application.Current.Resources["IconFilm"]
+                    : (Geometry)Application.Current.Resources["IconBook"];
+            }
+
+            UpdateFavIcon(animate: false);
+        }
+
+        private void CardControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.NewSize.Width > 0 && !double.IsNaN(e.NewSize.Width))
+            {
+                var targetHeight = Math.Round(e.NewSize.Width * 1.44);
+                if (Math.Abs(PosterFrame.Height - targetHeight) > 1)
+                {
+                    PosterFrame.Height = targetHeight;
+                    Height = targetHeight;
+                }
+
+                // Адаптация внутренних размеров для компактного отображения (например, в боковой панели)
+                if (e.NewSize.Width < 145)
+                {
+                    HeartBadge.Width = 24;
+                    HeartBadge.Height = 24;
+                    HeartBadge.CornerRadius = new CornerRadius(12);
+                    FavIcon.FontSize = 10.5;
+                    GenreText.FontSize = 9.5;
+                    RatingText.FontSize = 10;
+                    TitleText.FontSize = 11;
+                    TitleText.MaxHeight = 28;
+                    TitleText.LineHeight = 14;
+                    SubtitleText.FontSize = 9.5;
+                    BottomGradient.Height = 115;
+                }
+                else
+                {
+                    HeartBadge.Width = 30;
+                    HeartBadge.Height = 30;
+                    HeartBadge.CornerRadius = new CornerRadius(15);
+                    FavIcon.FontSize = 13.5;
+                    GenreText.FontSize = 11;
+                    RatingText.FontSize = 11.5;
+                    TitleText.FontSize = 13.5;
+                    TitleText.MaxHeight = 38;
+                    TitleText.LineHeight = 18;
+                    SubtitleText.FontSize = 11;
+                    BottomGradient.Height = 148;
+                }
+            }
+        }
+
+        public void SetSelected(bool selected)
+        {
+            IsSelected = selected;
+            SelectedBorder.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
+
+            if (selected)
+            {
+                var accentBrush = (SolidColorBrush)Application.Current.Resources["AccentBrush"];
+                CardShadowEffect.Color = accentBrush.Color;
+                CardShadowEffect.Opacity = 0.40;
+                CardShadowEffect.BlurRadius = 16;
+            }
+            else
+            {
+                CardShadowEffect.Color = Colors.Black;
+                CardShadowEffect.Opacity = _isHovered ? 0.48 : 0.28;
+                CardShadowEffect.BlurRadius = _isHovered ? 20 : 12;
+            }
         }
 
         public void UpdateFavIcon(bool animate = false)
@@ -62,7 +165,13 @@ namespace MovieBookRecommender.Views
                 HeartBrush.Color = isFav ? FavColor : RestColor;
             }
 
-            HeartBadge.Opacity = isFav ? 1.0 : 0.75;
+            HeartBadge.Opacity = isFav ? 1.0 : (_isHovered ? 1.0 : 0.80);
+        }
+
+        private void HeartBadge_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // Блокируем всплытие нажатия, чтобы карточка не переходила в состояние Pressed и не открывалась
+            e.Handled = true;
         }
 
         private void FavIcon_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -74,10 +183,9 @@ namespace MovieBookRecommender.Views
             var isFav = _data.IsFavorite(Item.Id);
             UpdateFavIcon(animate: true);
 
-            // Пульсирующая анимация (feedback) при нажатии на сердечко: 100% -> 115% -> 100% (180 ms)
+            // Пульсирующая анимация (feedback) при нажатии на сердечко: 100% -> 120% -> 100%
             AnimateHeartPulse();
 
-            // Показываем ненавязчивое уведомление внизу экрана
             var mainWin = Application.Current.MainWindow as MainWindow;
             if (isFav)
                 mainWin?.ShowToast("Добавлено в избранное", "♥");
@@ -91,7 +199,7 @@ namespace MovieBookRecommender.Views
         {
             var anim = new DoubleAnimationUsingKeyFrames();
             anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.15, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(90)))
+            anim.KeyFrames.Add(new EasingDoubleKeyFrame(1.20, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(90)))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             });
@@ -104,36 +212,65 @@ namespace MovieBookRecommender.Views
             HeartScale.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
         }
 
+        private void RootBorder_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            _isPressed = true;
+            AnimateScale(0.985, 80);
+            AnimateTranslate(0.0, 80);
+            AnimateShadow(opacity: 0.35, blur: 8, depth: 2, durationMs: 80);
+        }
+
         private void RootBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (Item != null)
-                OpenRequested?.Invoke(Item);
+            if (_isPressed)
+            {
+                _isPressed = false;
+                if (_isHovered)
+                {
+                    AnimateScale(1.025, 120);
+                    AnimateTranslate(-3.0, 120);
+                    AnimateShadow(opacity: 0.48, blur: 20, depth: 5, durationMs: 120);
+                }
+                else
+                {
+                    AnimateScale(1.0, 120);
+                    AnimateTranslate(0.0, 120);
+                    AnimateShadow(opacity: IsSelected ? 0.40 : 0.28, blur: 12, depth: 3, durationMs: 120);
+                }
+
+                if (Item != null)
+                    OpenRequested?.Invoke(Item);
+            }
         }
 
         private void RootBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
         {
-            AnimateScale(1.03);
-            AnimateImageZoom(1.04);
+            _isHovered = true;
+            AnimateScale(1.025, 180);
+            AnimateTranslate(-3.0, 180);
+            AnimateImageZoom(1.035);
             AnimateOpacity(BrightenOverlay, 0.04);
-            AnimateOpacity(BottomGradient, 1.0);
-            AnimateShadow(opacity: 0.52, blur: 20);
+            AnimateOpacity(BottomGradient, 0.98);
+            AnimateShadow(opacity: 0.48, blur: 20, depth: 5, durationMs: 180);
 
-            // Кнопка избранного становится более заметной
             HeartBadge.BeginAnimation(UIElement.OpacityProperty,
                 new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180)));
         }
 
         private void RootBorder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
         {
-            AnimateScale(1.0);
+            _isHovered = false;
+            _isPressed = false;
+            AnimateScale(1.0, 180);
+            AnimateTranslate(0.0, 180);
             AnimateImageZoom(1.0);
             AnimateOpacity(BrightenOverlay, 0);
-            AnimateOpacity(BottomGradient, 0.88);
-            AnimateShadow(opacity: 0.25, blur: 10);
+            AnimateOpacity(BottomGradient, 0.92);
+            AnimateShadow(opacity: IsSelected ? 0.40 : 0.28, blur: 12, depth: 3, durationMs: 180);
 
             var isFav = _data?.IsFavorite(Item?.Id ?? "") ?? false;
             HeartBadge.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(isFav ? 1.0 : 0.75, TimeSpan.FromMilliseconds(180)));
+                new DoubleAnimation(isFav ? 1.0 : 0.80, TimeSpan.FromMilliseconds(180)));
         }
 
         private void HeartBadge_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -147,12 +284,19 @@ namespace MovieBookRecommender.Views
             UpdateFavIcon(animate: true);
         }
 
-        private void AnimateScale(double to)
+        private void AnimateScale(double to, int durationMs = 180)
         {
-            var duration = TimeSpan.FromMilliseconds(180);
+            var duration = TimeSpan.FromMilliseconds(durationMs);
             var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
             CardScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
             CardScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
+        }
+
+        private void AnimateTranslate(double toY, int durationMs = 180)
+        {
+            var duration = TimeSpan.FromMilliseconds(durationMs);
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            CardTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(toY, duration) { EasingFunction = ease });
         }
 
         private void AnimateImageZoom(double to)
@@ -163,11 +307,12 @@ namespace MovieBookRecommender.Views
             ImageScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, duration) { EasingFunction = ease });
         }
 
-        private void AnimateShadow(double opacity, double blur)
+        private void AnimateShadow(double opacity, double blur, double depth, int durationMs = 180)
         {
-            var duration = TimeSpan.FromMilliseconds(180);
+            var duration = TimeSpan.FromMilliseconds(durationMs);
             CardShadowEffect.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(opacity, duration));
             CardShadowEffect.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(blur, duration));
+            CardShadowEffect.BeginAnimation(DropShadowEffect.ShadowDepthProperty, new DoubleAnimation(depth, duration));
         }
 
         private static void AnimateOpacity(UIElement element, double to)
@@ -183,4 +328,3 @@ namespace MovieBookRecommender.Views
         }
     }
 }
-

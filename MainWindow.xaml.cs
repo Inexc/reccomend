@@ -24,6 +24,7 @@ namespace MovieBookRecommender
         private record NavigationEntry(string PageKey, MediaItem? DetailItem = null, string? SearchQuery = null, string? GenreFilter = null);
         private readonly Stack<NavigationEntry> _history = new();
         private MediaItem? _currentDetailItem;
+        public MediaItem? CurrentDetailItem => _currentDetailItem;
 
         public MainWindow()
         {

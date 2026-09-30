@@ -152,9 +152,15 @@ namespace MovieBookRecommender.Views
         // ------------------------------------------------------------------
         // Адаптивная сетка: карточки равномерно заполняют доступную ширину
         // ------------------------------------------------------------------
-        private const double CardGap = 14;
-        private const double MinCardWidth = 172;
-        private const double MaxCardWidth = 240;
+        private const double CardGap = 16.0;
+
+        private static int CalculateColumns(double width)
+        {
+            if (width >= 1150) return 5;
+            if (width >= 750) return 4;
+            if (width >= 520) return 3;
+            return 2;
+        }
 
         private void CardsScroll_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -163,16 +169,20 @@ namespace MovieBookRecommender.Views
 
         private void ApplyResponsiveWidth(double availableWidth)
         {
-            if (availableWidth <= 0) return;
+            if (availableWidth <= 0 || CardsPanel.Children.Count == 0) return;
 
-            var columns = Math.Max(1, (int)((availableWidth + CardGap) / (MinCardWidth + CardGap)));
-            var itemWidth = availableWidth / columns - CardGap;
-            itemWidth = Math.Min(itemWidth, MaxCardWidth);
+            var columns = CalculateColumns(availableWidth);
+            var itemWidth = Math.Floor((availableWidth - (columns - 1) * CardGap - 2) / columns);
 
-            foreach (var child in CardsPanel.Children)
+            for (int i = 0; i < CardsPanel.Children.Count; i++)
             {
-                if (child is CardControl card)
+                if (CardsPanel.Children[i] is CardControl card)
+                {
                     card.Width = itemWidth;
+                    card.Margin = ((i + 1) % columns == 0)
+                        ? new Thickness(0, 0, 0, CardGap)
+                        : new Thickness(0, 0, CardGap, CardGap);
+                }
             }
         }
 
@@ -215,17 +225,21 @@ namespace MovieBookRecommender.Views
             EmptyState.Visibility = Visibility.Collapsed;
 
             var availableWidth = CardsScroll.ActualWidth;
-            double? presetWidth = null;
-            if (availableWidth > 0)
-            {
-                var columns = Math.Max(1, (int)((availableWidth + CardGap) / (MinCardWidth + CardGap)));
-                presetWidth = Math.Min(availableWidth / columns - CardGap, MaxCardWidth);
-            }
+            if (availableWidth <= 0) availableWidth = 800;
 
-            foreach (var item in items)
+            var columns = CalculateColumns(availableWidth);
+            var itemWidth = Math.Floor((availableWidth - (columns - 1) * CardGap - 2) / columns);
+
+            for (int i = 0; i < items.Count; i++)
             {
-                var card = new CardControl { Margin = new Thickness(0, 0, CardGap, CardGap) };
-                if (presetWidth.HasValue) card.Width = presetWidth.Value;
+                var item = items[i];
+                var card = new CardControl
+                {
+                    Width = itemWidth,
+                    Margin = ((i + 1) % columns == 0)
+                        ? new Thickness(0, 0, 0, CardGap)
+                        : new Thickness(0, 0, CardGap, CardGap)
+                };
                 card.Initialize(item, _data);
                 card.OpenRequested += _app.OpenItem;
                 card.FavoriteChanged += _app.OnFavoriteChanged;

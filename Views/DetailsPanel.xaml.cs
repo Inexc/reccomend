@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using MovieBookRecommender.Models;
@@ -277,12 +278,11 @@ namespace MovieBookRecommender.Views
                 Margin = new Thickness(0, 14, 0, 8)
             });
 
-            var similarRow = new StackPanel { Orientation = Orientation.Horizontal };
             var pool = (item.Kind == MediaKind.Movie
                 ? _data.Movies.Concat(_data.Books)
                 : _data.Books.Concat(_data.Movies)).ToList();
 
-            var similar = RecommendationService.RecommendSimilar(item, pool, 3);
+            var similar = RecommendationService.RecommendSimilar(item, pool, 2);
             if (similar.Count == 0)
             {
                 ContentPanel.Children.Add(new TextBlock
@@ -294,14 +294,23 @@ namespace MovieBookRecommender.Views
             }
             else
             {
-                foreach (var sim in similar)
+                var similarGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 6) };
+                double cardWidth = 117;
+
+                for (int i = 0; i < similar.Count; i++)
                 {
-                    var mini = new MiniCardControl { Margin = new Thickness(0, 0, 10, 0) };
-                    mini.Initialize(sim);
-                    mini.OpenRequested += m => OpenRequested?.Invoke(m);
-                    similarRow.Children.Add(mini);
+                    var sim = similar[i];
+                    var card = new CardControl
+                    {
+                        Width = cardWidth,
+                        Margin = (i % 2 == 0) ? new Thickness(0, 0, 10, 0) : new Thickness(0, 0, 0, 0)
+                    };
+                    card.Initialize(sim, _data);
+                    card.OpenRequested += m => OpenRequested?.Invoke(m);
+                    card.FavoriteChanged += m => FavoriteChanged?.Invoke(m);
+                    similarGrid.Children.Add(card);
                 }
-                ContentPanel.Children.Add(similarRow);
+                ContentPanel.Children.Add(similarGrid);
             }
 
             // Плавное появление (Fade-in 180ms)
@@ -368,109 +377,23 @@ namespace MovieBookRecommender.Views
             }
 
             var itemsToShow = similar.Take(4).ToList();
+            var moreGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 10) };
+            double cardWidth = 117;
 
-            foreach (var item in itemsToShow)
+            for (int i = 0; i < itemsToShow.Count; i++)
             {
-                var card = CreateMoreItemCard(item);
-                ContentPanel.Children.Add(card);
+                var item = itemsToShow[i];
+                var card = new CardControl
+                {
+                    Width = cardWidth,
+                    Margin = (i % 2 == 0) ? new Thickness(0, 0, 10, 12) : new Thickness(0, 0, 0, 12)
+                };
+                card.Initialize(item, _data);
+                card.OpenRequested += it => OpenRequested?.Invoke(it);
+                card.FavoriteChanged += it => FavoriteChanged?.Invoke(it);
+                moreGrid.Children.Add(card);
             }
-        }
-
-        private Border CreateMoreItemCard(MediaItem item)
-        {
-            var border = new Border
-            {
-                Background = (Brush)Application.Current.Resources["CardBrush"],
-                BorderBrush = (Brush)Application.Current.Resources["BorderSubtleBrush"],
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(10),
-                Margin = new Thickness(0, 0, 0, 10),
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            // Постер мини
-            var posterBorder = new Border
-            {
-                Width = 44,
-                Height = 62,
-                CornerRadius = new CornerRadius(6),
-                ClipToBounds = true,
-                Margin = new Thickness(0, 0, 10, 0),
-                Background = (Brush)Application.Current.Resources["BgBrush"]
-            };
-            var img = new Image
-            {
-                Stretch = Stretch.UniformToFill,
-                Source = PosterService.GetImage(item)
-            };
-            posterBorder.Child = img;
-            Grid.SetColumn(posterBorder, 0);
-            grid.Children.Add(posterBorder);
-
-            // Текстовый стек
-            var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-
-            var kindTag = item.Kind == MediaKind.Movie ? "Фильм" : "Книга";
-            var tagText = new TextBlock
-            {
-                Text = $"{kindTag}  •  ★ {item.Rating:F1}",
-                FontSize = 10.5,
-                FontFamily = new FontFamily("Segoe UI Semibold"),
-                Foreground = (Brush)Application.Current.Resources["Accent2Brush"],
-                Margin = new Thickness(0, 0, 0, 2)
-            };
-            textStack.Children.Add(tagText);
-
-            var title = new TextBlock
-            {
-                Text = item.Title,
-                FontSize = 13,
-                FontFamily = new FontFamily("Segoe UI Semibold"),
-                Foreground = (Brush)Application.Current.Resources["TextBrush"],
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxHeight = 36,
-                TextWrapping = TextWrapping.Wrap
-            };
-            textStack.Children.Add(title);
-
-            var sub = new TextBlock
-            {
-                Text = !string.IsNullOrWhiteSpace(item.Author) ? item.Author : item.GenreText,
-                FontSize = 11,
-                Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 2, 0, 0)
-            };
-            textStack.Children.Add(sub);
-
-            Grid.SetColumn(textStack, 1);
-            grid.Children.Add(textStack);
-
-            border.Child = grid;
-
-            // Hover effects
-            border.MouseEnter += (_, _) =>
-            {
-                border.Background = (Brush)Application.Current.Resources["CardHoverBrush"];
-                border.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
-            };
-            border.MouseLeave += (_, _) =>
-            {
-                border.Background = (Brush)Application.Current.Resources["CardBrush"];
-                border.BorderBrush = (Brush)Application.Current.Resources["BorderSubtleBrush"];
-            };
-
-            border.MouseLeftButtonUp += (_, _) =>
-            {
-                OpenRequested?.Invoke(item);
-            };
-
-            return border;
+            ContentPanel.Children.Add(moreGrid);
         }
     }
 }

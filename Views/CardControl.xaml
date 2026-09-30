@@ -1,56 +1,112 @@
 <UserControl x:Class="MovieBookRecommender.Views.CardControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="180" Cursor="Hand">
+             Width="180" Cursor="Hand"
+             SizeChanged="CardControl_SizeChanged">
     <Border x:Name="RootBorder" Background="Transparent"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown"
             MouseLeftButtonUp="RootBorder_MouseLeftButtonUp"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
             RenderTransformOrigin="0.5,0.5">
         <Border.RenderTransform>
-            <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            <TransformGroup>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+                <TranslateTransform x:Name="CardTranslate" X="0" Y="0"/>
+            </TransformGroup>
         </Border.RenderTransform>
 
         <Border x:Name="PosterFrame" Background="{StaticResource CardBrush}"
-                CornerRadius="12" ClipToBounds="True" Height="256">
+                BorderBrush="{StaticResource BorderBrush2}" BorderThickness="1"
+                CornerRadius="12" ClipToBounds="True" Height="259">
             <Border.Effect>
-                <DropShadowEffect x:Name="CardShadowEffect" Color="#000000" BlurRadius="10" ShadowDepth="3" Opacity="0.25"/>
+                <DropShadowEffect x:Name="CardShadowEffect" Color="#000000" BlurRadius="12" ShadowDepth="3" Opacity="0.28"/>
             </Border.Effect>
             <Grid>
+                <!-- 1. Fallback слой (элегантный monogram-заглушка, если нет изображения) -->
+                <Grid x:Name="FallbackContainer" Visibility="Collapsed">
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#281E23" Offset="0.0"/>
+                                <GradientStop Color="#1B1518" Offset="1.0"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <!-- Крупный стильный символ первой буквы -->
+                    <TextBlock x:Name="FallbackLetter" Text="?" FontSize="52" FontFamily="Segoe UI Semibold"
+                               Foreground="{StaticResource TextBrush}" Opacity="0.18"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,44"/>
+                    <!-- Иконка произведения внизу -->
+                    <Path x:Name="FallbackIcon" Data="{StaticResource IconFilm}" Fill="{StaticResource Accent2Brush}"
+                          Width="20" Height="20" Stretch="Uniform" Opacity="0.4"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,48,0,0"/>
+                </Grid>
+
+                <!-- 2. Изображение постера с зумом при hover -->
                 <Image x:Name="PosterImage" Stretch="UniformToFill" RenderTransformOrigin="0.5,0.5">
                     <Image.RenderTransform>
                         <ScaleTransform x:Name="ImageScale" ScaleX="1" ScaleY="1"/>
                     </Image.RenderTransform>
                 </Image>
 
-                <Border x:Name="BrightenOverlay" Background="White" Opacity="0"/>
+                <!-- 3. Светящийся мягкий оверлей при hover -->
+                <Border x:Name="BrightenOverlay" Background="White" Opacity="0" IsHitTestVisible="False"/>
 
-                <Border x:Name="BottomGradient" VerticalAlignment="Bottom" Height="136" Background="{StaticResource PosterFadeBrush}" Opacity="0.88"/>
+                <!-- 4. Кинематографичный тёмный градиент для текста снизу -->
+                <Border x:Name="BottomGradient" VerticalAlignment="Bottom" Height="148" Background="{StaticResource PosterFadeBrush}" Opacity="0.92" IsHitTestVisible="False"/>
 
-                <Border x:Name="HeartBadge" Width="28" Height="28" CornerRadius="14"
+                <!-- 5. Компактная кнопка избранного поверх постера (верхний правый угол) -->
+                <Border x:Name="HeartBadge" Width="30" Height="30" CornerRadius="15"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0"
-                        Cursor="Hand" MouseLeftButtonUp="FavIcon_MouseLeftButtonUp"
+                        Cursor="Hand"
+                        MouseLeftButtonDown="HeartBadge_MouseLeftButtonDown"
+                        MouseLeftButtonUp="FavIcon_MouseLeftButtonUp"
                         MouseEnter="HeartBadge_MouseEnter" MouseLeave="HeartBadge_MouseLeave"
-                        Opacity="0.75" RenderTransformOrigin="0.5,0.5">
+                        Opacity="0.80" RenderTransformOrigin="0.5,0.5">
                     <Border.RenderTransform>
                         <ScaleTransform x:Name="HeartScale" ScaleX="1" ScaleY="1"/>
                     </Border.RenderTransform>
                     <Border.Background>
                         <SolidColorBrush x:Name="HeartBrush" Color="#DD161114"/>
                     </Border.Background>
-                    <TextBlock x:Name="FavIcon" Text="♡" FontSize="13" Foreground="White"
+                    <Border.BorderBrush>
+                        <SolidColorBrush x:Name="HeartBorderBrush" Color="#33FFFFFF"/>
+                    </Border.BorderBrush>
+                    <Border.BorderThickness>1</Border.BorderThickness>
+                    <TextBlock x:Name="FavIcon" Text="♡" FontSize="13.5" Foreground="White"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                FontFamily="Segoe UI Semibold" Margin="0,0,0,1"/>
                 </Border>
 
-                <StackPanel VerticalAlignment="Bottom" Margin="12,0,12,12">
-                    <TextBlock x:Name="TitleText" FontSize="14" FontFamily="Segoe UI Semibold"
+                <!-- 6. Информационный блок: Жанр, Рейтинг, Название (макс 2 строки), Автор/Режиссёр -->
+                <StackPanel VerticalAlignment="Bottom" Margin="12,0,12,12" IsHitTestVisible="False">
+                    <!-- Верхняя строка метаданных: Жанр слева, Рейтинг справа -->
+                    <Grid Margin="0,0,0,3">
+                        <TextBlock x:Name="GenreText" FontSize="11" FontFamily="Segoe UI Semibold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" Margin="0,0,46,0"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="★" FontSize="11" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                            <TextBlock x:Name="RatingText" FontSize="11.5" FontFamily="Segoe UI Semibold"
+                                       Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Название произведения (максимум 2 строки, без обрезания дескендеров) -->
+                    <TextBlock x:Name="TitleText" FontSize="13.5" FontFamily="Segoe UI Semibold"
                                Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"
-                               MaxHeight="36" LineHeight="18" TextTrimming="CharacterEllipsis"/>
+                               MaxHeight="38" LineHeight="18" TextTrimming="CharacterEllipsis"
+                               Margin="0,0,0,2"/>
+
+                    <!-- Автор или Режиссёр -->
                     <TextBlock x:Name="SubtitleText" FontSize="11" Foreground="{StaticResource TextMutedBrush}"
-                               Margin="0,3,0,3" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="RatingText" FontSize="11.5" FontFamily="Segoe UI Semibold"
-                               Foreground="{StaticResource Accent2Brush}"/>
+                               TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
+
+                <!-- 7. Рамка выделения (Selected State) -->
+                <Border x:Name="SelectedBorder" CornerRadius="12" BorderThickness="2"
+                        BorderBrush="{StaticResource AccentBrush}" Visibility="Collapsed" IsHitTestVisible="False"/>
             </Grid>
         </Border>
     </Border>

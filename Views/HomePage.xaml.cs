@@ -23,6 +23,9 @@ namespace MovieBookRecommender.Views
         private int _currentHeroIndex = 0;
         private readonly DispatcherTimer _searchDebounceTimer;
         private double _currentCardWidth = 190;
+        private List<MediaItem> _recsItems = new();
+        private List<MediaItem> _popularItems = new();
+        private List<MediaItem> _newItems = new();
 
         public HomePage()
         {
@@ -64,15 +67,15 @@ namespace MovieBookRecommender.Views
 
             var allItems = _data.AllItems();
 
-            // 1. Секция «Рекомендуем для вас» (4 карточки)
-            var recs = RecommendationService.BuildPersonalizedFeed(allItems, _data.Favorites, limit: 4, excludeIds: usedIds);
-            foreach (var r in recs) usedIds.Add(r.Id);
+            // 1. Секция «Рекомендуем для вас» (до 6 карточек для адаптивной ширины)
+            _recsItems = RecommendationService.BuildPersonalizedFeed(allItems, _data.Favorites, limit: 6, excludeIds: usedIds);
+            foreach (var r in _recsItems) usedIds.Add(r.Id);
 
             RecsSubtitle.Text = _data.Favorites.Count > 0
                 ? "На основе ваших предпочтений"
                 : "На основе рейтинга и популярности";
 
-            if (recs.Count == 0)
+            if (_recsItems.Count == 0)
             {
                 RecsEmptyBanner.Visibility = Visibility.Visible;
                 RecsGrid.Visibility = Visibility.Collapsed;
@@ -81,17 +84,14 @@ namespace MovieBookRecommender.Views
             {
                 RecsEmptyBanner.Visibility = Visibility.Collapsed;
                 RecsGrid.Visibility = Visibility.Visible;
-                PopulateGrid(RecsGrid, recs);
             }
 
-            // 2. Секция «Популярное» (4 карточки)
-            var popular = RecommendationService.BuildPopularFeed(allItems, excludeIds: usedIds, limit: 4);
-            foreach (var p in popular) usedIds.Add(p.Id);
-            PopulateGrid(PopularGrid, popular);
+            // 2. Секция «Популярное» (до 6 карточек)
+            _popularItems = RecommendationService.BuildPopularFeed(allItems, excludeIds: usedIds, limit: 6);
+            foreach (var p in _popularItems) usedIds.Add(p.Id);
 
-            // 3. Секция «Новинки» (4 карточки)
-            var newReleases = RecommendationService.BuildNewReleasesFeed(allItems, excludeIds: usedIds, limit: 4);
-            PopulateGrid(NewGrid, newReleases);
+            // 3. Секция «Новинки» (до 6 карточек)
+            _newItems = RecommendationService.BuildNewReleasesFeed(allItems, excludeIds: usedIds, limit: 6);
 
             // Адаптивная ширина карточек
             ApplyResponsiveWidth(GetAvailableContentWidth());
@@ -213,25 +213,36 @@ namespace MovieBookRecommender.Views
         // ------------------------------------------------------------------
         // Сетки карточек и адаптивность
         // ------------------------------------------------------------------
-        private void PopulateGrid(UniformGrid container, List<MediaItem> items)
+        // ------------------------------------------------------------------
+        // Сетки карточек и адаптивность (1920: ~5, 1600: ~4, 1366: ~3-4)
+        // ------------------------------------------------------------------
+        private const double CardGap = 16.0;
+
+        private static int CalculateColumns(double width)
+        {
+            if (width >= 1150) return 5;
+            if (width >= 750) return 4;
+            if (width >= 520) return 3;
+            return 2;
+        }
+
+        private void PopulateGrid(UniformGrid container, List<MediaItem> items, int columns, double widthPerCard)
         {
             container.Children.Clear();
-            var columns = container.Columns > 0 ? container.Columns : 4;
-            var gap = 14.0;
 
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
                 var card = new CardControl
                 {
-                    Width = _currentCardWidth,
+                    Width = widthPerCard,
                     Margin = ((i + 1) % columns == 0)
                         ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, gap, 16)
+                        : new Thickness(0, 0, CardGap, 16)
                 };
                 card.Initialize(item, _data);
 
-                // При клике открываем в DetailsPanel (не дублируя Hero)
+                // При клике открываем детальную страницу произведения
                 card.OpenRequested += it =>
                 {
                     _app.OpenItem(it);
@@ -264,34 +275,20 @@ namespace MovieBookRecommender.Views
         {
             if (availableWidth <= 0 || RecsGrid == null) return;
 
-            int columns = availableWidth >= 680 ? 4 : 2;
-            double cardGap = 14.0;
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * cardGap)) / columns);
-            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 245);
+            var columns = CalculateColumns(availableWidth);
+            var widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
             _currentCardWidth = widthPerCard;
 
             RecsGrid.Columns = columns;
             PopularGrid.Columns = columns;
             NewGrid.Columns = columns;
 
-            UpdateCardsInGrid(RecsGrid, columns, cardGap, widthPerCard);
-            UpdateCardsInGrid(PopularGrid, columns, cardGap, widthPerCard);
-            UpdateCardsInGrid(NewGrid, columns, cardGap, widthPerCard);
-        }
-
-        private static void UpdateCardsInGrid(UniformGrid grid, int columns, double cardGap, double widthPerCard)
-        {
-            if (grid == null) return;
-            for (int i = 0; i < grid.Children.Count; i++)
-            {
-                if (grid.Children[i] is CardControl card)
-                {
-                    card.Width = widthPerCard;
-                    card.Margin = ((i + 1) % columns == 0)
-                        ? new Thickness(0, 0, 0, 16)
-                        : new Thickness(0, 0, cardGap, 16);
-                }
-            }
+            if (_recsItems.Count > 0)
+                PopulateGrid(RecsGrid, _recsItems.Take(columns).ToList(), columns, widthPerCard);
+            if (_popularItems.Count > 0)
+                PopulateGrid(PopularGrid, _popularItems.Take(columns).ToList(), columns, widthPerCard);
+            if (_newItems.Count > 0)
+                PopulateGrid(NewGrid, _newItems.Take(columns).ToList(), columns, widthPerCard);
         }
 
         // ------------------------------------------------------------------

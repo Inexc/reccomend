@@ -262,9 +262,8 @@ namespace MovieBookRecommender.Views
             var availableWidth = PageScroll.ActualWidth - 96;
             if (availableWidth <= 0) availableWidth = 800;
 
-            int columns = availableWidth >= 680 ? 4 : 2;
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap)) / columns);
-            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 240);
+            var columns = CalculateColumns(availableWidth);
+            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
             _currentCardWidth = widthPerCard;
 
             for (int i = 0; i < items.Count; i++)
@@ -273,7 +272,9 @@ namespace MovieBookRecommender.Views
                 var card = new CardControl
                 {
                     Width = widthPerCard,
-                    Margin = new Thickness(0, 0, CardGap, 16),
+                    Margin = ((i + 1) % columns == 0)
+                        ? new Thickness(0, 0, 0, CardGap)
+                        : new Thickness(0, 0, CardGap, CardGap),
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     RenderTransform = new ScaleTransform(1.0, 1.0)
                 };
@@ -433,17 +434,15 @@ namespace MovieBookRecommender.Views
             RecommendationsSection.Visibility = Visibility.Visible;
             RecsGrid.Children.Clear();
 
-            // Персонализированный фид на основе жанров избранного, строго БЕЗ элементов из избранного
-            var recs = RecommendationService.BuildPersonalizedFeed(_data.AllItems(), favIds, limit: 4);
-
-            var availableWidth = PageScroll.ActualWidth - 96;
-            if (availableWidth <= 0) availableWidth = 800;
-
-            int columns = availableWidth >= 680 ? 4 : 2;
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap)) / columns);
-            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 240);
+            var availableWidth = PageScroll.ActualWidth > 0 ? PageScroll.ActualWidth - 96 : 800;
+            var columns = CalculateColumns(availableWidth);
+            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
+            _currentCardWidth = widthPerCard;
 
             RecsGrid.Columns = columns;
+
+            // Персонализированный фид на основе жанров избранного, строго БЕЗ элементов из избранного
+            var recs = RecommendationService.BuildPersonalizedFeed(_data.AllItems(), favIds, limit: columns);
 
             for (int i = 0; i < recs.Count; i++)
             {
@@ -474,6 +473,14 @@ namespace MovieBookRecommender.Views
         // ------------------------------------------------------------------
         // Адаптивность при изменении размера окна (Раздел 17)
         // ------------------------------------------------------------------
+        private static int CalculateColumns(double width)
+        {
+            if (width >= 1150) return 5;
+            if (width >= 750) return 4;
+            if (width >= 520) return 3;
+            return 2;
+        }
+
         private void PageScroll_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 96));
@@ -483,9 +490,8 @@ namespace MovieBookRecommender.Views
         {
             if (availableWidth <= 0) return;
 
-            int columns = availableWidth >= 680 ? 4 : 2;
-            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap)) / columns);
-            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 240);
+            var columns = CalculateColumns(availableWidth);
+            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * CardGap) - 2) / columns);
             _currentCardWidth = widthPerCard;
 
             if (RecsGrid != null)
@@ -505,11 +511,14 @@ namespace MovieBookRecommender.Views
 
             if (CardsPanel != null)
             {
-                foreach (var child in CardsPanel.Children)
+                for (int i = 0; i < CardsPanel.Children.Count; i++)
                 {
-                    if (child is CardControl card)
+                    if (CardsPanel.Children[i] is CardControl card)
                     {
                         card.Width = widthPerCard;
+                        card.Margin = ((i + 1) % columns == 0)
+                            ? new Thickness(0, 0, 0, CardGap)
+                            : new Thickness(0, 0, CardGap, CardGap);
                     }
                 }
             }
