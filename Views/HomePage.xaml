@@ -59,7 +59,7 @@
                        VerticalOffset="6"
                        AllowsTransparency="True"
                        PopupAnimation="Fade"
-                       StaysOpen="False"
+                       StaysOpen="True"
                        IsOpen="False">
                     <Border Width="460"
                             Background="{StaticResource CardBrush}"

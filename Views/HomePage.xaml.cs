@@ -22,6 +22,7 @@ namespace MovieBookRecommender.Views
         private List<MediaItem> _heroCandidates = new();
         private int _currentHeroIndex = 0;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private readonly DispatcherTimer _lostFocusTimer;
         private List<MediaItem> _recsItems = new();
         private List<MediaItem> _popularItems = new();
         private List<MediaItem> _newItems = new();
@@ -40,6 +41,17 @@ namespace MovieBookRecommender.Views
             };
             _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
 
+            _lostFocusTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _lostFocusTimer.Tick += (_, _) =>
+            {
+                _lostFocusTimer.Stop();
+                if (!SearchBox.IsKeyboardFocusWithin)
+                    SearchPopup.IsOpen = false;
+            };
+
             SearchPopup.Closed += (_, _) =>
             {
                 _selectedDropdownIndex = -1;
@@ -54,10 +66,33 @@ namespace MovieBookRecommender.Views
 
             if (Application.Current?.MainWindow != null)
             {
-                Application.Current.MainWindow.Deactivated += (_, _) =>
+                var win = Application.Current.MainWindow;
+                win.Deactivated += (_, _) =>
                 {
                     if (SearchPopup != null)
                         SearchPopup.IsOpen = false;
+                };
+
+                win.PreviewMouseDown += (s, e) =>
+                {
+                    if (SearchPopup == null || !SearchPopup.IsOpen) return;
+
+                    var boxPos = e.GetPosition(SearchBoxContainer);
+                    bool inBox = boxPos.X >= 0 && boxPos.X <= SearchBoxContainer.ActualWidth &&
+                                 boxPos.Y >= 0 && boxPos.Y <= SearchBoxContainer.ActualHeight;
+
+                    bool inPopup = false;
+                    if (SearchPopup.Child is FrameworkElement popupContent)
+                    {
+                        var popupPos = e.GetPosition(popupContent);
+                        inPopup = popupPos.X >= 0 && popupPos.X <= popupContent.ActualWidth &&
+                                  popupPos.Y >= 0 && popupPos.Y <= popupContent.ActualHeight;
+                    }
+
+                    if (!inBox && !inPopup)
+                    {
+                        SearchPopup.IsOpen = false;
+                    }
                 };
             }
 
@@ -388,6 +423,7 @@ namespace MovieBookRecommender.Views
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
         {
+            _lostFocusTimer.Stop();
             var accent = (SolidColorBrush)Application.Current.Resources["AccentBrush"];
             SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(accent.Color, TimeSpan.FromMilliseconds(180)));
             SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(180)));
@@ -405,14 +441,8 @@ namespace MovieBookRecommender.Views
             SearchBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(border2.Color, TimeSpan.FromMilliseconds(180)));
             SearchPlaceholder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.8, TimeSpan.FromMilliseconds(180)));
 
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-            timer.Tick += (_, _) =>
-            {
-                timer.Stop();
-                if (!SearchBox.IsKeyboardFocusWithin)
-                    SearchPopup.IsOpen = false;
-            };
-            timer.Start();
+            _lostFocusTimer.Stop();
+            _lostFocusTimer.Start();
         }
 
         private void SearchBox_KeyDown(object sender, KeyEventArgs e)
@@ -655,7 +685,6 @@ namespace MovieBookRecommender.Views
             border.MouseLeftButtonUp += (_, _) =>
             {
                 SearchPopup.IsOpen = false;
-                ShowHeroItem(item, animate: true);
                 _app.OpenItem(item);
             };
 
