@@ -49,7 +49,7 @@ namespace MovieBookRecommender.Services
                     item.Kind = kind;
                 return items;
             }
-            catch (JsonException)
+            catch (Exception)
             {
                 return new List<MediaItem>();
             }
@@ -65,7 +65,7 @@ namespace MovieBookRecommender.Services
                 var ids = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
                 return new HashSet<string>(ids);
             }
-            catch (JsonException)
+            catch (Exception)
             {
                 return new HashSet<string>();
             }
@@ -73,9 +73,16 @@ namespace MovieBookRecommender.Services
 
         private void SaveFavorites()
         {
-            Directory.CreateDirectory(DataDir);
-            var json = JsonSerializer.Serialize(Favorites.OrderBy(x => x).ToList(), JsonOptions);
-            File.WriteAllText(FavoritesFile, json);
+            try
+            {
+                Directory.CreateDirectory(DataDir);
+                var json = JsonSerializer.Serialize(Favorites.OrderBy(x => x).ToList(), JsonOptions);
+                File.WriteAllText(FavoritesFile, json);
+            }
+            catch
+            {
+                // Игнорируем ошибки записи, предотвращая сбои приложения
+            }
         }
 
         public IEnumerable<MediaItem> AllItems() => Movies.Concat(Books);

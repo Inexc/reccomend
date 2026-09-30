@@ -141,6 +141,9 @@ namespace MovieBookRecommender
                 case "favorites":
                     ((FavoritesPage)page).Refresh();
                     break;
+                case "settings":
+                    ((SettingsPage)page).UpdateFavoritesCount();
+                    break;
             }
 
             SidebarControl.SetActive(key);
@@ -188,6 +191,7 @@ namespace MovieBookRecommender
                 case FavoritesPage fp: fp.Refresh(); break;
                 case HomePage hp: hp.RefreshData(); break;
                 case DetailPage dp: dp.RefreshData(); break;
+                case SettingsPage sp: sp.UpdateFavoritesCount(); break;
             }
         }
 
@@ -276,6 +280,8 @@ namespace MovieBookRecommender
                 hp.RefreshData();
             else if (_currentPageKey == "detail" && _pages.TryGetValue("detail", out var dPage) && dPage is DetailPage dp)
                 dp.RefreshData();
+            else if (_currentPageKey == "settings" && _pages.TryGetValue("settings", out var sPage) && sPage is SettingsPage sp)
+                sp.UpdateFavoritesCount();
 
             if (_currentPageKey != "detail" && DetailsPanelControl.CurrentItem != null)
                 DetailsPanelControl.ShowItem(DetailsPanelControl.CurrentItem);

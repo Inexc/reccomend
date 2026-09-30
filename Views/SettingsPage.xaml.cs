@@ -1,10 +1,18 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 using MovieBookRecommender.Services;
 
 namespace MovieBookRecommender.Views
 {
+    /// <summary>
+    /// Страница настроек приложения:
+    /// 1. Внешний вид (Тема оформления и Масштаб интерфейса).
+    /// 2. Приложение (Автосохранение и Анимации с ToggleSwitch).
+    /// 3. Данные (Динамический счётчик избранного и безопасная очистка с встроенным диалогом).
+    /// 4. О приложении (версия 2.0, архитектура, JSON).
+    /// </summary>
     public partial class SettingsPage : UserControl
     {
         private DataManager _data = null!;
@@ -23,18 +31,25 @@ namespace MovieBookRecommender.Views
             _app = app;
             _settingsManager = settingsManager;
 
+            // 1. Темы оформления
             var themes = new[] { "Тёмная (Тёплый нуар)", "Тёмная (Индиго)", "Тёмная (Изумруд)" };
             ThemeCombo.ItemsSource = themes;
             var currentTheme = _settingsManager.Settings.Theme;
             var themeIdx = Array.IndexOf(themes, currentTheme);
             ThemeCombo.SelectedIndex = themeIdx >= 0 ? themeIdx : 0;
 
+            // 2. Размер интерфейса
             var scales = new[] { "Компактный (90%)", "Обычный (100%)", "Крупный (110%)" };
             ScaleCombo.ItemsSource = scales;
             var currentScale = _settingsManager.Settings.Scale;
             var scaleIdx = Array.IndexOf(scales, currentScale);
             ScaleCombo.SelectedIndex = scaleIdx >= 0 ? scaleIdx : 1;
 
+            // 3. Параметры приложения (ToggleSwitch)
+            AutoSaveToggle.IsChecked = _settingsManager.Settings.AutoSave;
+            AnimationsToggle.IsChecked = _settingsManager.Settings.EnableAnimations;
+
+            // 4. Счётчик избранного
             UpdateFavoritesCount();
 
             _initialized = true;
@@ -42,57 +57,100 @@ namespace MovieBookRecommender.Views
 
         public void UpdateFavoritesCount()
         {
-            var count = _data.GetFavoriteItems().Count;
-            FavoritesCountText.Text = count.ToString();
+            if (_data == null || FavoritesCountText == null) return;
+            var count = _data.Favorites.Count;
+            FavoritesCountText.Text = $"Сохранено элементов: {count}";
         }
 
         private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_initialized || ThemeCombo.SelectedItem == null) return;
             var theme = ThemeCombo.SelectedItem.ToString()!;
-            _app.ApplyTheme(theme);
-            _app.ShowToast("Настройки сохранены", "⚙");
+            try
+            {
+                _app.ApplyTheme(theme);
+                _app.ShowToast("Настройки сохранены", "⚙");
+            }
+            catch
+            {
+                _app.ShowToast("Не удалось применить настройку", "!");
+            }
         }
 
         private void ScaleCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_initialized || ScaleCombo.SelectedItem == null) return;
             var scale = ScaleCombo.SelectedItem.ToString()!;
-            _app.ApplyScale(scale);
+            try
+            {
+                _app.ApplyScale(scale);
+                _app.ShowToast("Настройки сохранены", "⚙");
+            }
+            catch
+            {
+                _app.ShowToast("Не удалось применить настройку", "!");
+            }
+        }
+
+        private void AutoSaveToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_initialized) return;
+            var isAutoSave = AutoSaveToggle.IsChecked ?? true;
+            _settingsManager.Settings.AutoSave = isAutoSave;
+            _settingsManager.Save();
             _app.ShowToast("Настройки сохранены", "⚙");
         }
 
-        private bool _confirmClear;
-        private System.Windows.Threading.DispatcherTimer? _clearResetTimer;
-
-        private void ClearFavorites_Click(object sender, RoutedEventArgs e)
+        private void AnimationsToggle_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not Button btn) return;
+            if (!_initialized) return;
+            var isAnimations = AnimationsToggle.IsChecked ?? true;
+            _settingsManager.Settings.EnableAnimations = isAnimations;
+            _settingsManager.Save();
+            _app.ShowToast("Настройки сохранены", "⚙");
+        }
 
-            if (!_confirmClear)
+        // ------------------------------------------------------------------
+        // Очистка избранного с подтверждением (Разделы 6, 7, 12)
+        // ------------------------------------------------------------------
+        private void OpenClearDialog_Click(object sender, RoutedEventArgs e)
+        {
+            if (ConfirmDialog.Visibility == Visibility.Visible)
             {
-                _confirmClear = true;
-                btn.Content = "Точно очистить? Нажмите ещё раз";
-                _clearResetTimer?.Stop();
-                _clearResetTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
-                _clearResetTimer.Tick += (_, _) =>
-                {
-                    _clearResetTimer.Stop();
-                    _confirmClear = false;
-                    btn.Content = "Очистить избранное";
-                };
-                _clearResetTimer.Start();
+                CancelClear_Click(sender, e);
                 return;
             }
 
-            _clearResetTimer?.Stop();
-            _confirmClear = false;
-            btn.Content = "Очистить избранное";
+            ConfirmDialog.Visibility = Visibility.Visible;
+            ConfirmTranslate.Y = -6;
+
+            var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180));
+            var slide = new DoubleAnimation(-6.0, 0.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            ConfirmDialog.BeginAnimation(OpacityProperty, fadeIn);
+            ConfirmTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slide);
+        }
+
+        private void CancelClear_Click(object sender, RoutedEventArgs e)
+        {
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(140));
+            fadeOut.Completed += (_, _) => ConfirmDialog.Visibility = Visibility.Collapsed;
+            ConfirmDialog.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private void ConfirmClear_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmDialog.Visibility = Visibility.Collapsed;
 
             _data.ClearFavorites();
             UpdateFavoritesCount();
+
+            // Синхронизация всех открытых представлений (Главная, Избранное, Сайдбар)
             _app.OnFavoriteChanged(null);
-            _app.ShowToast("Список избранного очищен", "✓");
+            _app.ShowToast("Избранное очищено", "✓");
         }
     }
 }
