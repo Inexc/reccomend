@@ -38,3 +38,11 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Secrets and API credentials
+Data/secrets.json
+secrets.json
+
+# Local runtime asset cache
+Assets/movies/*.png
+Assets/books/*.png
