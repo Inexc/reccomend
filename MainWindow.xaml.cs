@@ -215,13 +215,29 @@ namespace MovieBookRecommender
 
             if (_currentVisiblePage == newPage)
             {
+                newPage.BeginAnimation(UIElement.OpacityProperty, null);
                 newPage.Opacity = 1.0;
                 newPage.Visibility = Visibility.Visible;
+                Panel.SetZIndex(newPage, 1);
+
+                for (int i = CenterHost.Children.Count - 1; i >= 0; i--)
+                {
+                    var child = CenterHost.Children[i];
+                    if (child != newPage)
+                    {
+                        if (child is UIElement ui)
+                            ui.BeginAnimation(UIElement.OpacityProperty, null);
+                        CenterHost.Children.RemoveAt(i);
+                    }
+                }
                 return;
             }
 
             var oldPage = _currentVisiblePage;
+            _currentVisiblePage = newPage;
             bool enableAnimations = _settings.Settings.EnableAnimations;
+
+            newPage.BeginAnimation(UIElement.OpacityProperty, null);
 
             // Добавляем новую страницу в Grid без предварительной очистки, чтобы пользователь не видел пустой фон
             if (!CenterHost.Children.Contains(newPage))
@@ -234,7 +250,6 @@ namespace MovieBookRecommender
 
             if (!enableAnimations)
             {
-                newPage.BeginAnimation(UIElement.OpacityProperty, null);
                 newPage.Opacity = 1.0;
 
                 if (oldPage != null && oldPage != newPage)
@@ -242,8 +257,6 @@ namespace MovieBookRecommender
                     oldPage.BeginAnimation(UIElement.OpacityProperty, null);
                     CenterHost.Children.Remove(oldPage);
                 }
-
-                _currentVisiblePage = newPage;
                 return;
             }
 
@@ -287,11 +300,18 @@ namespace MovieBookRecommender
                         CenterHost.Children.RemoveAt(i);
                     }
                 }
-
-                _currentVisiblePage = newPage;
             };
 
             newPage.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        }
+
+        public void NavigateToGenreFromDetail(string targetKey, string genre)
+        {
+            var entry = CaptureCurrentState();
+            _history.Push(entry);
+            _currentDetailItem = null;
+            ShowPage(targetKey, genreFilter: genre, clearHistory: false);
+            ShowFeaturedDefault(shuffle: false);
         }
 
         private NavigationEntry CaptureCurrentState()

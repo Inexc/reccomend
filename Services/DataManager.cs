@@ -109,17 +109,32 @@ namespace MovieBookRecommender.Services
             return set.ToList();
         }
 
+        public static string NormalizeSearchText(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            return text.Trim().ToLowerInvariant().Replace('ё', 'е');
+        }
+
         public List<MediaItem> Search(string? query, IEnumerable<MediaItem>? pool = null)
         {
             var source = (pool ?? AllItems()).ToList();
             if (string.IsNullOrWhiteSpace(query))
                 return source;
 
-            var q = query.Trim().ToLowerInvariant();
+            var normalizedQuery = NormalizeSearchText(query);
+            var words = normalizedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
+                return source;
+
             return source.Where(item =>
             {
-                var haystack = $"{item.Title} {item.Author} {item.GenreText} {item.Year}".ToLowerInvariant();
-                return haystack.Contains(q);
+                var haystack = NormalizeSearchText($"{item.Title} {item.TitleEn} {item.Author} {item.GenreText} {item.Year}");
+                foreach (var word in words)
+                {
+                    if (!haystack.Contains(word))
+                        return false;
+                }
+                return true;
             }).ToList();
         }
 

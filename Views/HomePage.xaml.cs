@@ -27,6 +27,9 @@ namespace MovieBookRecommender.Views
         private List<MediaItem> _newItems = new();
         private int _currentColumns = -1;
 
+        private readonly List<(Border border, MediaItem item)> _dropdownItems = new();
+        private int _selectedDropdownIndex = -1;
+
         public HomePage()
         {
             InitializeComponent();
@@ -36,12 +39,27 @@ namespace MovieBookRecommender.Views
                 Interval = TimeSpan.FromMilliseconds(160)
             };
             _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
+
+            SearchPopup.Closed += (_, _) =>
+            {
+                _selectedDropdownIndex = -1;
+                UpdateDropdownSelection();
+            };
         }
 
         public void Initialize(DataManager data, MainWindow app)
         {
             _data = data;
             _app = app;
+
+            if (Application.Current?.MainWindow != null)
+            {
+                Application.Current.MainWindow.Deactivated += (_, _) =>
+                {
+                    if (SearchPopup != null)
+                        SearchPopup.IsOpen = false;
+                };
+            }
 
             RefreshData();
         }
@@ -402,9 +420,33 @@ namespace MovieBookRecommender.Views
             if (e.Key == Key.Escape)
             {
                 SearchPopup.IsOpen = false;
+                _selectedDropdownIndex = -1;
+                UpdateDropdownSelection();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down && SearchPopup.IsOpen && _dropdownItems.Count > 0)
+            {
+                _selectedDropdownIndex = (_selectedDropdownIndex + 1) % _dropdownItems.Count;
+                UpdateDropdownSelection();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && SearchPopup.IsOpen && _dropdownItems.Count > 0)
+            {
+                _selectedDropdownIndex = (_selectedDropdownIndex - 1 + _dropdownItems.Count) % _dropdownItems.Count;
+                UpdateDropdownSelection();
+                e.Handled = true;
             }
             else if (e.Key == Key.Enter)
             {
+                if (SearchPopup.IsOpen && _selectedDropdownIndex >= 0 && _selectedDropdownIndex < _dropdownItems.Count)
+                {
+                    var selected = _dropdownItems[_selectedDropdownIndex].item;
+                    SearchPopup.IsOpen = false;
+                    _app.OpenItem(selected);
+                    e.Handled = true;
+                    return;
+                }
+
                 var query = SearchBox.Text?.Trim() ?? "";
                 if (!string.IsNullOrWhiteSpace(query))
                 {
@@ -415,6 +457,25 @@ namespace MovieBookRecommender.Views
                         _app.ShowPage("books", searchQuery: query);
                     else
                         _app.ShowPage("movies", searchQuery: query);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void UpdateDropdownSelection()
+        {
+            for (int i = 0; i < _dropdownItems.Count; i++)
+            {
+                var (border, _) = _dropdownItems[i];
+                if (i == _selectedDropdownIndex)
+                {
+                    border.Background = (Brush)Application.Current.Resources["CardHoverBrush"];
+                    border.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+                }
+                else
+                {
+                    border.Background = Brushes.Transparent;
+                    border.BorderBrush = Brushes.Transparent;
                 }
             }
         }
@@ -431,6 +492,8 @@ namespace MovieBookRecommender.Views
             if (string.IsNullOrWhiteSpace(query))
             {
                 SearchPopup.IsOpen = false;
+                _selectedDropdownIndex = -1;
+                _dropdownItems.Clear();
                 return;
             }
 
@@ -438,6 +501,8 @@ namespace MovieBookRecommender.Views
             var books = _data.Search(query, _data.Books);
             var total = movies.Count + books.Count;
 
+            _dropdownItems.Clear();
+            _selectedDropdownIndex = -1;
             DropdownMoviesList.Children.Clear();
             DropdownBooksList.Children.Clear();
 
@@ -468,7 +533,9 @@ namespace MovieBookRecommender.Views
                 DropdownMoviesSection.Visibility = Visibility.Visible;
                 foreach (var movie in movies.Take(3))
                 {
-                    DropdownMoviesList.Children.Add(CreateDropdownItem(movie));
+                    var itemBorder = CreateDropdownItem(movie);
+                    DropdownMoviesList.Children.Add(itemBorder);
+                    _dropdownItems.Add((itemBorder, movie));
                 }
             }
             else
@@ -482,7 +549,9 @@ namespace MovieBookRecommender.Views
                 DropdownBooksSection.Visibility = Visibility.Visible;
                 foreach (var book in books.Take(3))
                 {
-                    DropdownBooksList.Children.Add(CreateDropdownItem(book));
+                    var itemBorder = CreateDropdownItem(book);
+                    DropdownBooksList.Children.Add(itemBorder);
+                    _dropdownItems.Add((itemBorder, book));
                 }
             }
             else
@@ -504,19 +573,32 @@ namespace MovieBookRecommender.Views
             SearchPopup.IsOpen = true;
         }
 
-        private FrameworkElement CreateDropdownItem(MediaItem item)
+        private Border CreateDropdownItem(MediaItem item)
         {
             var border = new Border
             {
                 Background = Brushes.Transparent,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(8, 6, 8, 6),
                 Margin = new Thickness(0, 1, 0, 1),
                 Cursor = Cursors.Hand
             };
 
-            border.MouseEnter += (_, _) => border.Background = (Brush)Application.Current.Resources["CardHoverBrush"];
-            border.MouseLeave += (_, _) => border.Background = Brushes.Transparent;
+            border.MouseEnter += (_, _) =>
+            {
+                _selectedDropdownIndex = _dropdownItems.FindIndex(x => x.border == border);
+                UpdateDropdownSelection();
+            };
+            border.MouseLeave += (_, _) =>
+            {
+                if (_selectedDropdownIndex != _dropdownItems.FindIndex(x => x.border == border))
+                {
+                    border.Background = Brushes.Transparent;
+                    border.BorderBrush = Brushes.Transparent;
+                }
+            };
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

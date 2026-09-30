@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using MovieBookRecommender.Models;
 using MovieBookRecommender.Services;
 
@@ -17,10 +18,17 @@ namespace MovieBookRecommender.Views
         private MainWindow _app = null!;
         private Func<List<MediaItem>> _itemsGetter = null!;
         private bool _suppressFilterEvents;
+        private readonly DispatcherTimer _searchDebounceTimer;
 
         public ListPage()
         {
             InitializeComponent();
+            _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+            _searchDebounceTimer.Tick += (_, _) =>
+            {
+                _searchDebounceTimer.Stop();
+                Refresh();
+            };
         }
 
         public void Initialize(DataManager data, MainWindow app, Func<List<MediaItem>> itemsGetter, string title, string icon)
@@ -104,7 +112,10 @@ namespace MovieBookRecommender.Views
 
             UpdateResetButtonVisibility();
             if (!_suppressFilterEvents)
-                Refresh();
+            {
+                _searchDebounceTimer.Stop();
+                _searchDebounceTimer.Start();
+            }
         }
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
@@ -125,12 +136,15 @@ namespace MovieBookRecommender.Views
 
         private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
         {
+            _searchDebounceTimer.Stop();
             SearchBox.Text = "";
             SearchBox.Focus();
+            Refresh();
         }
 
         private void ResetFiltersBtn_Click(object sender, RoutedEventArgs e)
         {
+            _searchDebounceTimer.Stop();
             _suppressFilterEvents = true;
             SearchBox.Text = "";
             GenreCombo.SelectedIndex = 0;

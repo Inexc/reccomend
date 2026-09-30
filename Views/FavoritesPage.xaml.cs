@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using MovieBookRecommender.Models;
 using MovieBookRecommender.Services;
 
@@ -26,9 +27,17 @@ namespace MovieBookRecommender.Views
         private int _currentColumns = -1;
         private const double CardGap = 16.0;
 
+        private readonly DispatcherTimer _searchDebounceTimer;
+
         public FavoritesPage()
         {
             InitializeComponent();
+            _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+            _searchDebounceTimer.Tick += (_, _) =>
+            {
+                _searchDebounceTimer.Stop();
+                ApplyFilterAndSort();
+            };
         }
 
         public void Initialize(DataManager data, MainWindow app)
@@ -237,7 +246,8 @@ namespace MovieBookRecommender.Views
                 }
             }
 
-            ApplyFilterAndSort();
+            _searchDebounceTimer.Stop();
+            _searchDebounceTimer.Start();
         }
 
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
@@ -260,8 +270,10 @@ namespace MovieBookRecommender.Views
 
         private void ClearSearchBtn_Click(object sender, RoutedEventArgs e)
         {
+            _searchDebounceTimer.Stop();
             SearchBox.Text = "";
             SearchBox.Focus();
+            ApplyFilterAndSort();
         }
 
         // ------------------------------------------------------------------
@@ -289,15 +301,11 @@ namespace MovieBookRecommender.Views
                 _ => allFavs
             };
 
-            // 2. Поиск в избранном (по названию, автору/режиссёру, жанру)
-            var query = SearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
+            // 2. Единый поиск в избранном через DataManager.Search
+            var query = SearchBox?.Text;
             if (!string.IsNullOrWhiteSpace(query))
             {
-                items = items.Where(it =>
-                {
-                    var haystack = $"{it.Title} {it.Author} {it.GenreText}".ToLowerInvariant();
-                    return haystack.Contains(query);
-                }).ToList();
+                items = _data.Search(query, items);
             }
 
             // 3. Сортировка
@@ -317,7 +325,7 @@ namespace MovieBookRecommender.Views
             {
                 CardsPanel.Children.Clear();
                 CardsPanel.Visibility = Visibility.Collapsed;
-                ShowAppropriateEmptyState(allFavs.Count, query);
+                ShowAppropriateEmptyState(allFavs.Count, query ?? "");
                 return;
             }
 

@@ -213,7 +213,7 @@ namespace MovieBookRecommender.Views
                         };
                         chip.MouseLeftButtonUp += (_, _) =>
                         {
-                            _app.ShowPage(isMovie ? "movies" : "books", genreFilter: g);
+                            _app.NavigateToGenreFromDetail(isMovie ? "movies" : "books", g);
                         };
                         GenreChipsPanel.Children.Add(chip);
                     }
