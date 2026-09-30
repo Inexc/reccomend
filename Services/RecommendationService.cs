@@ -45,10 +45,10 @@ namespace MovieBookRecommender.Services
             return overlap * 10.0 + ratingScore * 2.0 + candidate.Rating * 0.1 + kindBonus;
         }
 
-        public static List<MediaItem> RecommendSimilar(MediaItem seed, IEnumerable<MediaItem> pool, int limit = 3)
+        public static List<MediaItem> RecommendSimilar(MediaItem seed, IEnumerable<MediaItem> pool, int limit = 4)
         {
-            return pool
-                .Where(item => item.Id != seed.Id)
+            var poolList = pool.Where(item => item.Id != seed.Id).ToList();
+            var ranked = poolList
                 .Select(item => (Item: item, Score: Score(seed, item)))
                 .Where(pair => pair.Score > 0)
                 .OrderByDescending(pair => pair.Score)
@@ -56,6 +56,27 @@ namespace MovieBookRecommender.Services
                 .Take(limit)
                 .Select(pair => pair.Item)
                 .ToList();
+
+            if (ranked.Count < limit && poolList.Count > ranked.Count)
+            {
+                var added = new HashSet<string>(ranked.Select(r => r.Id));
+                // Сначала того же типа по рейтингу
+                foreach (var item in poolList.Where(i => i.Kind == seed.Kind).OrderByDescending(i => i.Rating))
+                {
+                    if (ranked.Count >= limit) break;
+                    if (added.Add(item.Id))
+                        ranked.Add(item);
+                }
+                // Затем любые оставшиеся
+                foreach (var item in poolList.OrderByDescending(i => i.Rating))
+                {
+                    if (ranked.Count >= limit) break;
+                    if (added.Add(item.Id))
+                        ranked.Add(item);
+                }
+            }
+
+            return ranked;
         }
 
         /// <summary>
