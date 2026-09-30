@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -17,27 +18,21 @@ namespace MovieBookRecommender.Views
     {
         private DataManager _data = null!;
         private MainWindow _app = null!;
-        private MediaItem? _heroItem;
+        private MediaItem? _currentHeroItem;
+        private List<MediaItem> _heroCandidates = new();
+        private int _currentHeroIndex = 0;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private double _currentCardWidth = 190;
 
         public HomePage()
         {
             InitializeComponent();
-            RecsScroll.PreviewMouseWheel += Carousel_PreviewMouseWheel;
-            NewScroll.PreviewMouseWheel += Carousel_PreviewMouseWheel;
 
             _searchDebounceTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(160)
             };
             _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
-        }
-
-        private static void Carousel_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            var scroll = (ScrollViewer)sender;
-            scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - e.Delta);
-            e.Handled = true;
         }
 
         public void Initialize(DataManager data, MainWindow app)
@@ -50,11 +45,56 @@ namespace MovieBookRecommender.Views
 
         public void RefreshData()
         {
-            SetHero(RecommendationService.PickFeatured(_data.AllItems(), _data.Favorites));
-            BuildFavoritesList();
-            BuildGenreChips();
-            BuildCarousel(RecsRow, RecommendationService.BuildPersonalizedFeed(_data.AllItems(), _data.Favorites, 12));
-            BuildCarousel(NewRow, _data.AllItems().OrderByDescending(i => i.Year).Take(12));
+            BuildHeroCandidates();
+
+            if (_currentHeroItem == null || !_heroCandidates.Any(i => i.Id == _currentHeroItem.Id))
+            {
+                _currentHeroIndex = 0;
+                if (_heroCandidates.Count > 0)
+                    ShowHeroItem(_heroCandidates[0], animate: false);
+            }
+            else
+            {
+                UpdateHeroFavButton();
+            }
+
+            var usedIds = new HashSet<string>();
+            if (_currentHeroItem != null)
+                usedIds.Add(_currentHeroItem.Id);
+
+            var allItems = _data.AllItems();
+
+            // 1. Секция «Рекомендуем для вас» (4 карточки)
+            var recs = RecommendationService.BuildPersonalizedFeed(allItems, _data.Favorites, limit: 4, excludeIds: usedIds);
+            foreach (var r in recs) usedIds.Add(r.Id);
+
+            RecsSubtitle.Text = _data.Favorites.Count > 0
+                ? "На основе ваших предпочтений"
+                : "На основе рейтинга и популярности";
+
+            if (recs.Count == 0)
+            {
+                RecsEmptyBanner.Visibility = Visibility.Visible;
+                RecsGrid.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                RecsEmptyBanner.Visibility = Visibility.Collapsed;
+                RecsGrid.Visibility = Visibility.Visible;
+                PopulateGrid(RecsGrid, recs);
+            }
+
+            // 2. Секция «Популярное» (4 карточки)
+            var popular = RecommendationService.BuildPopularFeed(allItems, excludeIds: usedIds, limit: 4);
+            foreach (var p in popular) usedIds.Add(p.Id);
+            PopulateGrid(PopularGrid, popular);
+
+            // 3. Секция «Новинки» (4 карточки)
+            var newReleases = RecommendationService.BuildNewReleasesFeed(allItems, excludeIds: usedIds, limit: 4);
+            PopulateGrid(NewGrid, newReleases);
+
+            // Адаптивная ширина карточек
+            ApplyResponsiveWidth(GetAvailableContentWidth());
 
             // Если поиск активен — обновляем результаты поиска
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
@@ -66,216 +106,186 @@ namespace MovieBookRecommender.Views
         // ------------------------------------------------------------------
         // Hero
         // ------------------------------------------------------------------
-        private void SetHero(MediaItem? item)
+        private void BuildHeroCandidates()
+        {
+            _heroCandidates = RecommendationService.PickFeaturedCandidates(_data.AllItems(), _data.Favorites, count: 6);
+            if (_currentHeroIndex >= _heroCandidates.Count)
+                _currentHeroIndex = 0;
+        }
+
+        private void ShowHeroItem(MediaItem item, bool animate = true)
         {
             if (item is null) return;
+            _currentHeroItem = item;
 
-            if (_heroItem != null && _heroItem.Id != item.Id)
-            {
-                var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(80));
-                fadeOut.Completed += (_, _) =>
-                {
-                    ApplyHeroData(item);
-                    var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                    };
-                    HeroFrame.BeginAnimation(OpacityProperty, fadeIn);
-                };
-                HeroFrame.BeginAnimation(OpacityProperty, fadeOut);
-            }
-            else
+            if (!animate)
             {
                 ApplyHeroData(item);
+                return;
             }
+
+            // Плавное переключение Hero (opacity 1 -> 0, затем 0 -> 1 за 220–250 ms)
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(110))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            fadeOut.Completed += (_, _) =>
+            {
+                ApplyHeroData(item);
+                var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(130))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                HeroFrame.BeginAnimation(OpacityProperty, fadeIn);
+            };
+            HeroFrame.BeginAnimation(OpacityProperty, fadeOut);
         }
 
         private void ApplyHeroData(MediaItem item)
         {
-            _heroItem = item;
-
-            HeroGenres.Children.Clear();
-            foreach (var genre in item.Genre)
-            {
-                HeroGenres.Children.Add(new Border
-                {
-                    Background = (Brush)Application.Current.Resources["OverlayBrush"],
-                    CornerRadius = new CornerRadius(12),
-                    Padding = new Thickness(12, 5, 12, 5),
-                    Margin = new Thickness(0, 0, 8, 0),
-                    Child = new TextBlock
-                    {
-                        Text = genre.ToUpper(),
-                        FontSize = 10,
-                        FontFamily = new FontFamily("Segoe UI Semibold"),
-                        Foreground = (Brush)Application.Current.Resources["Accent2Brush"]
-                    }
-                });
-            }
+            _currentHeroItem = item;
 
             HeroTitle.Text = item.Title;
-            HeroAuthor.Text = item.Author;
-            HeroRating.Text = $"{item.Rating:F1}";
+            HeroGenresText.Text = item.GenreText;
+            HeroRatingText.Text = $"{item.Rating:F1}";
+
+            var role = item.Kind == MediaKind.Movie ? "Режиссёр" : "Автор";
+            var metaExtra = !string.IsNullOrWhiteSpace(item.Author) ? $"{role}: {item.Author}" : "";
+            if (item.Year > 0)
+                metaExtra = string.IsNullOrEmpty(metaExtra) ? $"{item.Year} г." : $"{metaExtra}  •  {item.Year} г.";
+            HeroMetaSubText.Text = metaExtra;
+
             HeroDescription.Text = item.Description;
             HeroPrimaryBtn.Content = item.Kind == MediaKind.Movie ? "▷  Смотреть" : "▷  Читать";
             UpdateHeroFavButton();
 
-            HeroImage.Source = PosterService.GetImage(item);
+            var img = PosterService.GetImage(item);
+            HeroPosterImage.Source = img;
+            HeroBgImage.Source = img;
         }
 
         private void UpdateHeroFavButton()
         {
-            if (_heroItem is null) return;
-            var isFav = _data.IsFavorite(_heroItem.Id);
+            if (_currentHeroItem is null) return;
+            var isFav = _data.IsFavorite(_currentHeroItem.Id);
             HeroFavBtn.Content = isFav ? "♥  В избранном" : "♡  В избранное";
             HeroFavBtn.BorderBrush = isFav
                 ? (Brush)Application.Current.Resources["AccentBrush"]
                 : (Brush)Application.Current.Resources["BorderBrush2"];
+            HeroFavBtn.Foreground = isFav
+                ? (Brush)Application.Current.Resources["AccentBrush"]
+                : (Brush)Application.Current.Resources["TextBrush"];
+        }
+
+        private void HeroSwitchBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_heroCandidates.Count == 0) return;
+            _currentHeroIndex = (_currentHeroIndex + 1) % _heroCandidates.Count;
+            ShowHeroItem(_heroCandidates[_currentHeroIndex], animate: true);
         }
 
         private void HeroPrimaryBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_heroItem != null) ExternalLinks.Open(_heroItem);
+            if (_currentHeroItem != null) ExternalLinks.Open(_currentHeroItem);
         }
 
         private void HeroFavBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_heroItem is null) return;
-            _data.ToggleFavorite(_heroItem.Id);
-            var isFav = _data.IsFavorite(_heroItem.Id);
+            if (_currentHeroItem is null) return;
+            _data.ToggleFavorite(_currentHeroItem.Id);
+            var isFav = _data.IsFavorite(_currentHeroItem.Id);
             UpdateHeroFavButton();
-            BuildFavoritesList();
 
             if (isFav)
                 _app.ShowToast("Добавлено в избранное", "♥");
             else
                 _app.ShowToast("Удалено из избранного", "♡");
 
-            _app.OnFavoriteChanged(_heroItem);
+            _app.OnFavoriteChanged(_currentHeroItem);
         }
 
         // ------------------------------------------------------------------
-        // Из избранного
+        // Сетки карточек и адаптивность
         // ------------------------------------------------------------------
-        private void BuildFavoritesList()
+        private void PopulateGrid(UniformGrid container, List<MediaItem> items)
         {
-            FavoritesList.Children.Clear();
-            var favorites = _data.GetFavoriteItems().Take(4).ToList();
-            FavoritesEmptyText.Visibility = favorites.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            container.Children.Clear();
+            var columns = container.Columns > 0 ? container.Columns : 4;
+            var gap = 14.0;
 
-            foreach (var item in favorites)
+            for (int i = 0; i < items.Count; i++)
             {
-                var row = new Grid { Margin = new Thickness(0, 0, 0, 10), Cursor = Cursors.Hand };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                var posterBorder = new Border
+                var item = items[i];
+                var card = new CardControl
                 {
-                    Width = 38,
-                    Height = 52,
-                    CornerRadius = new CornerRadius(6),
-                    ClipToBounds = true,
-                    Margin = new Thickness(0, 0, 10, 0),
-                    Background = (Brush)Application.Current.Resources["BgBrush"]
+                    Width = _currentCardWidth,
+                    Margin = ((i + 1) % columns == 0)
+                        ? new Thickness(0, 0, 0, 16)
+                        : new Thickness(0, 0, gap, 16)
                 };
-                var image = new Image
-                {
-                    Stretch = Stretch.UniformToFill,
-                    Source = PosterService.GetImage(item)
-                };
-                posterBorder.Child = image;
-                Grid.SetColumn(posterBorder, 0);
-
-                var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                textStack.Children.Add(new TextBlock
-                {
-                    Text = item.Title.Length > 22 ? item.Title[..20] + "…" : item.Title,
-                    FontSize = 12,
-                    FontFamily = new FontFamily("Segoe UI Semibold"),
-                    Foreground = (Brush)Application.Current.Resources["TextBrush"]
-                });
-                textStack.Children.Add(new TextBlock
-                {
-                    Text = string.IsNullOrWhiteSpace(item.Author) ? item.GenreText : item.Author,
-                    FontSize = 10,
-                    Foreground = (Brush)Application.Current.Resources["TextFaintBrush"],
-                    Margin = new Thickness(0, 2, 0, 0)
-                });
-                Grid.SetColumn(textStack, 1);
-
-                row.Children.Add(posterBorder);
-                row.Children.Add(textStack);
-                row.MouseLeftButtonUp += (_, _) =>
-                {
-                    SetHero(item);
-                    _app.OpenItem(item);
-                };
-
-                FavoritesList.Children.Add(row);
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // Жанры
-        // ------------------------------------------------------------------
-        private void BuildGenreChips()
-        {
-            GenreChipsPanel.Children.Clear();
-            var genres = _data.GenresFor(_data.AllItems()).Take(8);
-            foreach (var genre in genres)
-            {
-                var chip = new Button
-                {
-                    Content = genre,
-                    Style = (Style)Application.Current.Resources["GenreChip"],
-                    Margin = new Thickness(0, 0, 8, 8)
-                };
-                chip.Click += (_, _) => _app.ShowPage("movies", genreFilter: genre);
-                GenreChipsPanel.Children.Add(chip);
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // Горизонтальные карусели
-        // ------------------------------------------------------------------
-        private void BuildCarousel(StackPanel row, IEnumerable<MediaItem> items)
-        {
-            row.Children.Clear();
-            foreach (var item in items)
-            {
-                var card = new CardControl { Margin = new Thickness(0, 0, 16, 4) };
                 card.Initialize(item, _data);
+
+                // При клике открываем в DetailsPanel (не дублируя Hero)
                 card.OpenRequested += it =>
                 {
-                    SetHero(it);
                     _app.OpenItem(it);
                 };
+
+                // При добавлении/удалении из избранного
                 card.FavoriteChanged += _ =>
                 {
-                    BuildFavoritesList();
                     UpdateHeroFavButton();
                     _app.OnFavoriteChanged(item);
                 };
-                row.Children.Add(card);
+
+                container.Children.Add(card);
             }
         }
 
-        private void RecsLeft_Click(object sender, RoutedEventArgs e) =>
-            AnimateScroll(RecsScroll, RecsScroll.HorizontalOffset - 420);
-
-        private void RecsRight_Click(object sender, RoutedEventArgs e) =>
-            AnimateScroll(RecsScroll, RecsScroll.HorizontalOffset + 420);
-
-        private void NewLeft_Click(object sender, RoutedEventArgs e) =>
-            AnimateScroll(NewScroll, NewScroll.HorizontalOffset - 420);
-
-        private void NewRight_Click(object sender, RoutedEventArgs e) =>
-            AnimateScroll(NewScroll, NewScroll.HorizontalOffset + 420);
-
-        private static void AnimateScroll(ScrollViewer scrollViewer, double targetOffset)
+        private double GetAvailableContentWidth()
         {
-            targetOffset = Math.Max(0, Math.Min(targetOffset, scrollViewer.ScrollableWidth));
-            scrollViewer.ScrollToHorizontalOffset(targetOffset);
+            var width = MainScroll?.ActualWidth ?? 0;
+            if (width <= 0) width = 900;
+            return Math.Max(300, width - 96);
+        }
+
+        private void MainScroll_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveWidth(Math.Max(300, e.NewSize.Width - 96));
+        }
+
+        private void ApplyResponsiveWidth(double availableWidth)
+        {
+            if (availableWidth <= 0 || RecsGrid == null) return;
+
+            int columns = availableWidth >= 680 ? 4 : 2;
+            double cardGap = 14.0;
+            double widthPerCard = Math.Floor((availableWidth - ((columns - 1) * cardGap)) / columns);
+            widthPerCard = Math.Min(Math.Max(widthPerCard, 145), 245);
+            _currentCardWidth = widthPerCard;
+
+            RecsGrid.Columns = columns;
+            PopularGrid.Columns = columns;
+            NewGrid.Columns = columns;
+
+            UpdateCardsInGrid(RecsGrid, columns, cardGap, widthPerCard);
+            UpdateCardsInGrid(PopularGrid, columns, cardGap, widthPerCard);
+            UpdateCardsInGrid(NewGrid, columns, cardGap, widthPerCard);
+        }
+
+        private static void UpdateCardsInGrid(UniformGrid grid, int columns, double cardGap, double widthPerCard)
+        {
+            if (grid == null) return;
+            for (int i = 0; i < grid.Children.Count; i++)
+            {
+                if (grid.Children[i] is CardControl card)
+                {
+                    card.Width = widthPerCard;
+                    card.Margin = ((i + 1) % columns == 0)
+                        ? new Thickness(0, 0, 0, 16)
+                        : new Thickness(0, 0, cardGap, 16);
+                }
+            }
         }
 
         // ------------------------------------------------------------------
@@ -520,7 +530,7 @@ namespace MovieBookRecommender.Views
             border.MouseLeftButtonUp += (_, _) =>
             {
                 SearchPopup.IsOpen = false;
-                SetHero(item);
+                ShowHeroItem(item, animate: true);
                 _app.OpenItem(item);
             };
 

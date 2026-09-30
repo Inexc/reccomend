@@ -119,6 +119,9 @@ namespace MovieBookRecommender
                 case "movies" or "books":
                     ((ListPage)page).Refresh();
                     break;
+                case "home":
+                    ((HomePage)page).RefreshData();
+                    break;
                 case "favorites":
                     ((FavoritesPage)page).Refresh();
                     break;
