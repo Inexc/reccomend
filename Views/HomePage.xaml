@@ -303,7 +303,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Свежее в коллекции" Style="{StaticResource H2}"/>
-                        <TextBlock Text="Недавние поступления книг и фильмов" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
+                        <TextBlock Text="Последние по году выпуска" Style="{StaticResource SmallText}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
                 <UniformGrid x:Name="NewGrid" Rows="1" Columns="4" Margin="-8,0,-8,12"/>
