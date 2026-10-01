@@ -27,6 +27,9 @@ namespace MovieBookRecommender.Services
 
         /// <summary>Чередовать фильмы и книги для сбалансированной выдачи.</summary>
         public bool InterleaveMediaKinds { get; set; } = true;
+
+        /// <summary>Исключать элементы из избранного из выдачи рекомендаций.</summary>
+        public bool ExcludeFavorites { get; set; } = true;
     }
 
     /// <summary>
@@ -50,54 +53,55 @@ namespace MovieBookRecommender.Services
             if (poolList.Count == 0 || limit <= 0)
                 return new List<MediaItem>();
 
-            // 1. Формируем множество исключений (SeedItem, уже добавленные в избранное, уже показанные)
-            var excludeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
+            // 1. Формируем множество исключений
+            var hardExclude = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (options.ExcludeIds != null)
             {
                 foreach (var id in options.ExcludeIds)
                 {
                     if (!string.IsNullOrWhiteSpace(id))
-                        excludeSet.Add(id);
+                        hardExclude.Add(id);
                 }
             }
-
             if (options.SeedItem != null)
-                excludeSet.Add(options.SeedItem.Id);
+                hardExclude.Add(options.SeedItem.Id);
 
-            if (options.FavoriteIds != null)
+            var excludeSet = new HashSet<string>(hardExclude, StringComparer.OrdinalIgnoreCase);
+            if (options.ExcludeFavorites && options.FavoriteIds != null)
             {
                 foreach (var favId in options.FavoriteIds)
                     excludeSet.Add(favId);
             }
 
             // Кандидаты, удовлетворяющие фильтру типа и исключениям
-            var candidates = poolList.Where(i => !excludeSet.Contains(i.Id)).ToList();
+            var candidates = poolList.Where(i => !excludeSet.Contains(i.Id));
             if (options.KindFilter.HasValue)
-                candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
+                candidates = candidates.Where(i => i.Kind == options.KindFilter.Value);
+            var candidateList = candidates.ToList();
 
-            // Если кандидатов меньше требуемого, снимаем строгое ограничение по избранному (кроме seed и ExcludeIds)
-            if (candidates.Count == 0)
+            bool favoritesRelaxed = false;
+
+            // Порядок ослабления ограничений при отсутствии кандидатов:
+            // 1) Сначала снимаем только «избранное», сохраняя hardExclude (SeedItem и ExcludeIds)
+            if (candidateList.Count == 0 && options.ExcludeFavorites && options.FavoriteIds != null && options.FavoriteIds.Count > 0)
             {
-                var hardExclude = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                if (options.ExcludeIds != null)
-                {
-                    foreach (var id in options.ExcludeIds)
-                    {
-                        if (!string.IsNullOrWhiteSpace(id)) hardExclude.Add(id);
-                    }
-                }
-                if (options.SeedItem != null)
-                    hardExclude.Add(options.SeedItem.Id);
-
-                candidates = poolList
-                    .Where(i => !hardExclude.Contains(i.Id))
-                    .ToList();
+                favoritesRelaxed = true;
+                var relaxedQuery = poolList.Where(i => !hardExclude.Contains(i.Id));
                 if (options.KindFilter.HasValue)
-                    candidates = candidates.Where(i => i.Kind == options.KindFilter.Value).ToList();
+                    relaxedQuery = relaxedQuery.Where(i => i.Kind == options.KindFilter.Value);
+                candidateList = relaxedQuery.ToList();
             }
 
-            if (candidates.Count == 0)
+            // 2) При необходимости снимаем ExcludeIds. SeedItem не возвращать никогда.
+            if (candidateList.Count == 0 && options.ExcludeIds != null)
+            {
+                var seedOnlyQuery = poolList.Where(i => options.SeedItem == null || !string.Equals(i.Id, options.SeedItem.Id, StringComparison.OrdinalIgnoreCase));
+                if (options.KindFilter.HasValue)
+                    seedOnlyQuery = seedOnlyQuery.Where(i => i.Kind == options.KindFilter.Value);
+                candidateList = seedOnlyQuery.ToList();
+            }
+
+            if (candidateList.Count == 0)
                 return new List<MediaItem>();
 
             // 2. Строим профиль вкусов пользователя на основе избранного
@@ -134,7 +138,7 @@ namespace MovieBookRecommender.Services
             double bookAffinity = favItems.Count > 0 ? (double)bookFavs / favItems.Count : 0.5;
 
             // 3. Вычисляем релевантность каждого кандидата
-            var ranked = candidates
+            var ranked = candidateList
                 .Select(candidate => (
                     Item: candidate,
                     Score: ScoreCandidate(candidate, options, userGenreWeights, userAuthors, movieAffinity, bookAffinity, favItems.Count)
@@ -155,26 +159,25 @@ namespace MovieBookRecommender.Services
                 result = PickWithAuthorDiversity(ranked, limit);
             }
 
-            // 5. Защитное дополнение (Requirement 7):
+            // 5. Защитное дополнение:
             // Если подходящих рекомендаций недостаточно, аккуратно дополняем высокорейтинговыми элементами
             if (result.Count < limit && poolList.Count > result.Count)
             {
                 var addedIds = new HashSet<string>(result.Select(r => r.Id), StringComparer.OrdinalIgnoreCase);
-                if (options.SeedItem != null) addedIds.Add(options.SeedItem.Id);
-                if (options.FavoriteIds != null)
+
+                // Базовые исключения для дополнения: уже добавленные + hardExclude (SeedItem, ExcludeIds).
+                // Если избранное не снималось, то и FavoriteIds.
+                var fallbackExclude = new HashSet<string>(addedIds, StringComparer.OrdinalIgnoreCase);
+                foreach (var id in hardExclude)
+                    fallbackExclude.Add(id);
+
+                if (!favoritesRelaxed && options.ExcludeFavorites && options.FavoriteIds != null)
                 {
-                    foreach (var fid in options.FavoriteIds) addedIds.Add(fid);
-                }
-                if (options.ExcludeIds != null)
-                {
-                    foreach (var eid in options.ExcludeIds)
-                    {
-                        if (!string.IsNullOrWhiteSpace(eid)) addedIds.Add(eid);
-                    }
+                    foreach (var fid in options.FavoriteIds)
+                        fallbackExclude.Add(fid);
                 }
 
-                // Дополняем кандидатами того же типа (если есть предпочтение)
-                var fallbackQuery = poolList.Where(i => !addedIds.Contains(i.Id));
+                var fallbackQuery = poolList.Where(i => !fallbackExclude.Contains(i.Id));
                 if (options.KindFilter.HasValue)
                 {
                     fallbackQuery = fallbackQuery.Where(i => i.Kind == options.KindFilter.Value);
