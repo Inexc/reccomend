@@ -49,7 +49,7 @@ namespace MovieBookRecommender.Services
             RecommendationOptions options,
             int limit = 4)
         {
-            var poolList = pool.Where(i => i != null).ToList();
+            var poolList = pool.Where(i => i is not null).ToList();
             if (poolList.Count == 0 || limit <= 0)
                 return new List<MediaItem>();
 
@@ -503,7 +503,7 @@ namespace MovieBookRecommender.Services
             int varietyOffset = 0)
         {
             var poolList = pool.ToList();
-            var excludeSet = excludeIds != null ? new HashSet<string>(excludeIds) : new HashSet<string>();
+            var excludeSet = excludeIds != null ? new HashSet<string>(excludeIds, StringComparer.OrdinalIgnoreCase) : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Для новинок фильтруем пул по свежести года выпуска
             var candidates = poolList
@@ -544,12 +544,14 @@ namespace MovieBookRecommender.Services
         /// </summary>
         public static List<MediaItem> PickFeaturedCandidates(
             IEnumerable<MediaItem> pool,
-            HashSet<string> favoriteIds,
+            HashSet<string>? favoriteIds = null,
             int count = 6,
             int varietyOffset = 0)
         {
             var poolList = pool.ToList();
             if (poolList.Count == 0) return new List<MediaItem>();
+
+            var favSet = favoriteIds ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var result = new List<MediaItem>();
             var addedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -557,7 +559,7 @@ namespace MovieBookRecommender.Services
             // 1. Главная персонализированная рекомендация на основе профиля
             var topPicks = GetRecommendations(poolList, new RecommendationOptions
             {
-                FavoriteIds = favoriteIds,
+                FavoriteIds = favSet,
                 VarietyOffset = varietyOffset,
                 InterleaveMediaKinds = true
             }, limit: 2);
@@ -570,7 +572,7 @@ namespace MovieBookRecommender.Services
 
             // 2. Лучший фильм
             var bestMovie = poolList
-                .Where(i => i.Kind == MediaKind.Movie && !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .Where(i => i.Kind == MediaKind.Movie && !addedIds.Contains(i.Id) && !favSet.Contains(i.Id))
                 .OrderByDescending(i => i.Rating)
                 .FirstOrDefault();
             if (bestMovie != null && addedIds.Add(bestMovie.Id))
@@ -578,7 +580,7 @@ namespace MovieBookRecommender.Services
 
             // 3. Лучшая книга
             var bestBook = poolList
-                .Where(i => i.Kind == MediaKind.Book && !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .Where(i => i.Kind == MediaKind.Book && !addedIds.Contains(i.Id) && !favSet.Contains(i.Id))
                 .OrderByDescending(i => i.Rating)
                 .FirstOrDefault();
             if (bestBook != null && addedIds.Add(bestBook.Id))
@@ -586,7 +588,7 @@ namespace MovieBookRecommender.Services
 
             // 4. Свежий хит
             var newest = poolList
-                .Where(i => !addedIds.Contains(i.Id) && !favoriteIds.Contains(i.Id))
+                .Where(i => !addedIds.Contains(i.Id) && !favSet.Contains(i.Id))
                 .OrderByDescending(i => i.Year)
                 .ThenByDescending(i => i.Rating)
                 .FirstOrDefault();
@@ -597,7 +599,7 @@ namespace MovieBookRecommender.Services
             foreach (var item in poolList.OrderByDescending(i => i.Rating))
             {
                 if (result.Count >= count) break;
-                if (!favoriteIds.Contains(item.Id) && addedIds.Add(item.Id))
+                if (!favSet.Contains(item.Id) && addedIds.Add(item.Id))
                     result.Add(item);
             }
 
