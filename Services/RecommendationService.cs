@@ -132,6 +132,19 @@ namespace MovieBookRecommender.Services
                     if (fav.Kind == MediaKind.Movie) movieFavs++;
                     else if (fav.Kind == MediaKind.Book) bookFavs++;
                 }
+
+                // Нормировка весов жанров на максимальный вес, чтобы значения лежали в диапазоне [0..1]
+                if (userGenreWeights.Count > 0)
+                {
+                    double maxWeight = userGenreWeights.Values.Max();
+                    if (maxWeight > 0.0)
+                    {
+                        foreach (var key in userGenreWeights.Keys.ToList())
+                        {
+                            userGenreWeights[key] /= maxWeight;
+                        }
+                    }
+                }
             }
 
             double movieAffinity = favItems.Count > 0 ? (double)movieFavs / favItems.Count : 0.5;
@@ -246,15 +259,20 @@ namespace MovieBookRecommender.Services
             // 3. Вкус пользователя на основе Избранного
             if (totalFavCount > 0)
             {
-                // Совпадение жанров кандидата с профилем избранного (нормируем на количество избранного)
+                // Вкус пользователя по жанрам на основе профиля избранного:
+                // userGenreWeights предварительно нормирован в диапазон [0..1] делением на максимальный вес.
+                // Суммируются веса совпадающих жанров с множителем 7.0 и ограничением 14.0 баллов,
+                // чтобы вклад вкуса (макс. 14) был сопоставим с вкладом рейтинга (Rating * 1.8 ≈ 14–17)
+                // и не подавлял общую выдачу как при 1, так и при 8+ произведениях в избранном.
                 double userGenreScore = 0.0;
                 foreach (var g in c.Genre)
                 {
                     if (userGenreWeights.TryGetValue(g, out var gw))
                     {
-                        userGenreScore += (gw / totalFavCount) * 5.0;
+                        userGenreScore += gw * 7.0;
                     }
                 }
+                userGenreScore = Math.Min(14.0, userGenreScore);
 
                 // Если задан SeedItem, вкусы пользователя служат вспомогательным бустером (35%),
                 // если SeedItem нет (Главная или Избранное) — вкусы пользователя определяют основной приоритет (100%)
