@@ -345,8 +345,8 @@ namespace MovieBookRecommender.Services
         private static List<MediaItem> InterleaveKindsWithDiversity(IEnumerable<MediaItem> items, int count)
         {
             var list = items.ToList();
-            var movies = list.Where(i => i.Kind == MediaKind.Movie).ToList();
-            var books = list.Where(i => i.Kind == MediaKind.Book).ToList();
+            var movies = PickWithAuthorDiversity(list.Where(i => i.Kind == MediaKind.Movie), int.MaxValue);
+            var books = PickWithAuthorDiversity(list.Where(i => i.Kind == MediaKind.Book), int.MaxValue);
 
             var result = new List<MediaItem>();
             var authorCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
