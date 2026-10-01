@@ -471,7 +471,8 @@ namespace MovieBookRecommender.Services
                 FavoriteIds = favoriteIds,
                 ExcludeIds = excludeIds,
                 VarietyOffset = varietyOffset,
-                InterleaveMediaKinds = false
+                InterleaveMediaKinds = false,
+                ExcludeFavorites = false
             }, limit);
         }
 
