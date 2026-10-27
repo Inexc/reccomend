@@ -46,3 +46,8 @@ secrets.json
 # Local runtime asset cache
 Assets/movies/*.png
 Assets/books/*.png
+
+# Video render frames and uncompressed audio cache
+Реклама/frames/frame_*.png
+Реклама/audio/*.wav
+Реклама/output/*.wav
